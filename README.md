@@ -23,6 +23,40 @@ On a changed selection, the detector stops the old driver, updates the configura
 
 Target: Raspberry Pi OS Lite 64-bit with Python 3.10+, systemd, and distro NUT 2.8.x packages. Reserve the Pi's address in DHCP. Enable SSH when preparing the SD card, then connect from Windows PowerShell with `ssh upsadmin@ups-adapter.local` (replace the username and hostname with yours, or use the Pi's IP address).
 
+### One Windows script, including Hermes MCP
+
+Run [deploy.ps1](deploy.ps1) **on the Windows computer where your Hermes backend runs** (for example LENOVO720). The Pi must already boot Raspberry Pi OS with SSH enabled, have network access for package installation, and allow your account to use `sudo`. Windows needs the built-in OpenSSH Client. Download the script alongside this project, or download just the script: when project files are absent, it fetches them from this repository's `feature/mcp-server` branch. That branch currently contains MCP; the v0.1.0 release does not.
+
+To download just the script from PowerShell:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/gbolotin/ups-network-adapter/feature/mcp-server/deploy.ps1 -OutFile deploy.ps1
+```
+
+In **Windows PowerShell**, from the directory containing the script:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1
+```
+
+It asks for the Pi's IPv4 address. The account defaults to `upsadmin`; for another account or to skip the address question:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -PiAddress 192.168.50.200 -PiUser upsadmin
+```
+
+Enter the Pi password at the SSH prompts and again if `sudo` asks. On a first connection, verify the displayed host fingerprint against the Pi before accepting it. The script copies the shell/Python/configuration/test files with Linux newlines, backs up any existing Pi project in its home directory, runs the checks and `sudo bash setup.sh`, and then verifies the MCP tools over SSH. Setup configures one automatically detected USB UPS; it preserves existing SNMP access settings, with loopback-only access on a new installation. It does not enable NUT LAN access or automated shutdown.
+
+The script creates `%USERPROFILE%\.ssh\ups_adapter_mcp` without a passphrase, or reuses an existing unencrypted Ed25519 key there. The private key stays on your Windows computer. It authorizes the public key on the Pi with a forced MCP command and disabled forwarding/PTYs, preserving other keys and backing up changed `authorized_keys`. Installation uses password authentication because the restricted MCP key cannot run administrative commands. Keep SSH password login available for rerunning deployment.
+
+After successful verification, it prints a personalized **`hermes mcp add ups_adapter ...` command**, also saved as `%USERPROFILE%\add-ups-to-hermes.ps1`. Run that command on the same computer, then run `hermes mcp test ups_adapter`. In Hermes, use `/reload-mcp` or restart Desktop and ask it to check your UPS and Pi health. The command includes `PROGRAMDATA`, required by Windows OpenSSH when Hermes filters the environment. Existing Hermes configuration is not changed by the deployment script.
+
+If `hermes` is unavailable in your terminal, the script also saves `%USERPROFILE%\ups-adapter-hermes.yaml`. Merge its `ups_adapter` entry into the `mcp_servers` section of the configuration used by your Desktop backend (normally `%USERPROFILE%\.hermes\config.yaml`); preserve any other servers and settings. A remotely hosted Hermes backend needs its own SSH key and paths on that host. See the [Hermes MCP configuration reference](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference) and [MCP guide](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp/).
+
+Verified on 2026-10-07: the Windows deployment checks passed on PowerShell 5.1 and 7. A complete deployment from Windows PowerShell 5.1 to the Pi at `192.168.50.200` passed the four Python checks, NUT/SNMP setup verification, SSH key authorization and all three live MCP tools with an APC BX750MI. Hermes registration on LENOVO720 remains to be run there, using the command generated on that computer.
+
+### Install from the Pi shell
+
 At the **Pi's shell prompt**, download and install the project:
 
 ```sh
@@ -273,6 +307,14 @@ This is **partial, read-only UPS-MIB support**, not a claim of an RFC conformanc
 Web UI and physical display are left optional. A coordinated host/Pi shutdown policy, traps, and SNMPv3 provisioning are not included in this monitoring build; agree and test that policy before relying on the adapter to shut down equipment. To remove the installation, disable `ups-autodetect.service` and `ups-snmp.service`, stop the managed driver, and restore the backed-up NUT configuration and previous enumerator/monitor-service policy.
 
 ## Local development checks
+
+On Windows, verify deployment helpers with either Windows PowerShell 5.1 or PowerShell 7:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test_deploy.ps1
+```
+
+This checks address validation, Linux file packaging, standalone archive download handling, real OpenSSH key creation/reuse, and the generated Hermes command, including paths with spaces and apostrophes. It does not connect to a Pi. Run `deploy.ps1` for an actual installation and MCP connection test.
 
 ```sh
 python3 test_ups_mib.py
