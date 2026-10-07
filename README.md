@@ -2,7 +2,7 @@
 
 One USB UPS → automatic driver selection → NUT `ups` → Python bridge → one Net-SNMP endpoint → monitoring client.
 
-An installable Raspberry Pi 4 project for **read-only RFC 1628 UPS-MIB monitoring** of **one connected UPS at a time**, either an APC BX750MI or an Eaton 5E 2200i. Connect either UPS to any Pi USB host port. The adapter automatically selects the USB driver at boot and when the connected UPS changes. Both models use the same NUT name (`ups`), SNMP address, port, and community, so replacing the UPS requires no client configuration change. Python uses only its standard library; NUT handles USB and Net-SNMP handles SNMP packets and access control.
+An installable Raspberry Pi 4 project for **read-only RFC 1628 UPS-MIB monitoring** of **one connected UPS at a time**, either an APC BX750MI or an Eaton 5E 2200i. Connect either UPS to any Pi USB host port. The adapter automatically selects the USB driver at boot and when the connected UPS changes. Both models use the same NUT name (`ups`), SNMP address, port, and community, so replacing the UPS requires no client configuration change. Read-only MCP tools also provide live UPS readings, Pi health and adapter service states to AI assistants over SSH. Python uses only its standard library; NUT handles USB and Net-SNMP handles SNMP packets and access control.
 
 **Status:** on 2026-10-07, `setup.sh` was tested on a Raspberry Pi 4 with NUT 2.8.1 and an APC BX750MI (`051d:0002`). Initial migration, a repeat run without configuration or service changes, a read-only check, and recovery of a stopped SNMP service all passed. Live SNMP v2c GET returned the correct model, charge, and mains source; walk and bulkwalk returned 20 UPS-MIB readings in increasing OID order. All three synthetic checks also passed on the Pi. Eaton detection/model switching, reboot and outage behavior, LAN access, and the monitoring client's interoperability remain hardware acceptance checks.
 
@@ -22,6 +22,42 @@ On a changed selection, the detector stops the old driver, updates the configura
 ## 1. Prepare the Pi
 
 Target: Raspberry Pi OS Lite 64-bit with Python 3.10+, systemd, and distro NUT 2.8.x packages. Reserve the Pi's address in DHCP. Enable SSH when preparing the SD card, then connect from Windows PowerShell with `ssh upsadmin@ups-adapter.local` (replace the username and hostname with yours, or use the Pi's IP address).
+
+### One Windows script, including Hermes MCP
+
+Run [deploy.ps1](deploy.ps1) **on the Windows computer where your Hermes backend runs** (for example LENOVO720). The Pi must already boot Raspberry Pi OS with SSH enabled, have network access for package installation, and allow your account to use `sudo`. Windows needs the built-in OpenSSH Client. Download the script alongside this project, or download just the script: when project files are absent, it fetches them from this repository's `feature/mcp-server` branch. That branch currently contains MCP; the v0.1.0 release does not.
+
+To download just the script from PowerShell:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/gbolotin/ups-network-adapter/feature/mcp-server/deploy.ps1 -OutFile deploy.ps1
+```
+
+In **Windows PowerShell**, from the directory containing the script:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1
+```
+
+It asks for the Pi's IPv4 address. The account defaults to `upsadmin`; for another account or to skip the address question:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -PiAddress 192.168.50.200 -PiUser upsadmin
+```
+
+Enter the Pi password at the SSH prompts and again if `sudo` asks. On a first connection, verify the displayed host fingerprint against the Pi before accepting it. The script copies the shell/Python/configuration/test files with Linux newlines, backs up any existing Pi project in its home directory, runs the checks and `sudo bash setup.sh`, and then verifies the MCP tools over SSH. Setup configures one automatically detected USB UPS; it preserves existing SNMP access settings, with loopback-only access on a new installation. It does not enable NUT LAN access or automated shutdown.
+
+The script creates `%USERPROFILE%\.ssh\ups_adapter_mcp` without a passphrase, or reuses an existing unencrypted Ed25519 key there. The private key stays on your Windows computer. It authorizes the public key on the Pi with a forced MCP command and disabled forwarding/PTYs, preserving other keys and backing up changed `authorized_keys`. Installation uses password authentication because the restricted MCP key cannot run administrative commands. Keep SSH password login available for rerunning deployment.
+
+After successful verification, it prints a personalized **`hermes mcp add ups_adapter ...` command**, also saved as `%USERPROFILE%\add-ups-to-hermes.ps1`. Run that command on the same computer, then run `hermes mcp test ups_adapter`. In Hermes, use `/reload-mcp` or restart Desktop and ask it to check your UPS and Pi health. The command includes `PROGRAMDATA`, required by Windows OpenSSH when Hermes filters the environment. Existing Hermes configuration is not changed by the deployment script.
+
+If `hermes` is unavailable in your terminal, the script also saves `%USERPROFILE%\ups-adapter-hermes.yaml`. Merge its `ups_adapter` entry into the `mcp_servers` section of the configuration used by your Desktop backend (normally `%USERPROFILE%\.hermes\config.yaml`); preserve any other servers and settings. A remotely hosted Hermes backend needs its own SSH key and paths on that host. See the [Hermes MCP configuration reference](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference) and [MCP guide](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp/).
+
+Verified on 2026-10-07: the Windows deployment checks passed on PowerShell 5.1 and 7. A complete deployment from Windows PowerShell 5.1 to the Pi at `192.168.50.200` passed the four Python checks, NUT/SNMP setup verification, SSH key authorization and all three live MCP tools with an APC BX750MI. Hermes registration on LENOVO720 remains to be run there, using the command generated on that computer.
+
+Also verified on 2026-10-07: a fresh UPS software installation after purging NUT/SNMP and their four libraries, removing adapter/project/configuration files, stopping UPS processes, and clearing MCP key authorizations. The standalone script downloaded its project from GitHub, installed all eight missing packages, detected the APC, passed local SNMP verification, created and authorized a new client key, and successfully called all three MCP tools. A repeat setup and read-only check preserved configuration hashes and service process identities. The OS, login accounts, SSH settings and network settings were preserved; this test did not reimage the SD card. Existing MCP key access was restored after testing and the disposable key revoked. The reset generates a new SNMP community; the previous configuration is retained in a private Pi backup.
+
+### Install from the Pi shell
 
 At the **Pi's shell prompt**, download and install the project:
 
@@ -185,6 +221,55 @@ NUT telemetry reads do not require authentication. For a client's `upsmon` login
 
 Restart `nut-server` after editing. The corresponding **client** `upsmon.conf` entry is `MONITOR ups@192.0.2.200 1 observer YOUR_NUT_PASSWORD secondary` for either model. This permits monitoring; it does not configure a complete coordinated shutdown policy. NUT transport is plain TCP here. Do not add `actions = SET`, `actions = FSD`, or `instcmds = ALL` for monitoring clients. See the upstream [NUT user/role documentation](https://networkupstools.org/docs/man/upsd.users.html).
 
+## MCP access for AI assistants
+
+The installer includes `ups_mcp.py`. After copying or pulling updates, run `sudo bash setup.sh` to install it at `/usr/local/lib/ups-network-adapter/ups_mcp.py`, then reconnect your MCP client. An MCP client launches the server on demand over SSH, using an ordinary Pi account. No MCP daemon, listening network port, `sudo`, API key, or additional Python package is needed. SNMP and NUT clients continue to work independently.
+
+Verified on 2026-10-07: all three tools returned live data on a Raspberry Pi 4 with an APC BX750MI as an ordinary user. An official Python MCP SDK client on Windows also negotiated a session, discovered the tools and read all three through SSH key authentication. Installing only the MCP update preserved existing NUT/SNMP configuration hashes and service PIDs, invocation IDs and restart counts.
+
+| Tool | Returned data |
+| --- | --- |
+| `get_ups_status` | Current model, manufacturer, driver, NUT status flags, battery charge/runtime/voltage, input voltage and load. Runtime is in seconds. Missing sensors are `null`. |
+| `get_pi_health` | CPU temperature in Celsius, uptime in seconds and root filesystem capacity/used/free bytes. |
+| `get_adapter_status` | Load, active and substate of USB detection, NUT driver target, NUT server and SNMP services. Active services alone do not prove UPS communication. |
+
+All tools take an empty arguments object. Results include a UTC `observed_at` timestamp and JSON text; clients using the June/November 2025 protocol also receive `structuredContent`. UPS queries are fresh, use the fixed local name `ups`, and time out after one second. Service queries time out after three seconds. A failed query produces an MCP tool error without retaining old readings. The server cannot change UPS settings, shut down equipment, run arbitrary commands, or read private credential files.
+
+Use SSH key authentication so the MCP client can connect without an interactive password prompt. First connect normally and verify the Pi's host key. Then verify this command from your PC succeeds without prompting (replace the account/hostname with yours):
+
+```sh
+ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes upsadmin@ups-adapter.local true
+```
+
+For clients that accept an `mcpServers` JSON configuration, add:
+
+```json
+{
+  "mcpServers": {
+    "ups-adapter": {
+      "command": "ssh",
+      "args": [
+        "-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+        "upsadmin@ups-adapter.local",
+        "/usr/bin/python3", "-u", "/usr/local/lib/ups-network-adapter/ups_mcp.py"
+      ]
+    }
+  }
+}
+```
+
+Use the full path to `ssh.exe` on Windows if your client cannot find it. Client configuration formats vary; select a **stdio** MCP server and use the same command/arguments. A client on the Pi can instead launch `/usr/bin/python3 -u /usr/local/lib/ups-network-adapter/ups_mcp.py` directly. Never allocate an SSH PTY (`-t`), and keep shell startup banners off stdout for noninteractive SSH commands.
+
+To select a dedicated key, insert `"-i", "C:\\path\\to\\your\\mcp_key"` in the SSH arguments before the hostname (use your key's path). For a key restricted to this server, authorize its public key in the Pi account's `~/.ssh/authorized_keys` with this prefix:
+
+```text
+restrict,command="/usr/bin/python3 -u /usr/local/lib/ups-network-adapter/ups_mcp.py" ssh-ed25519 YOUR_PUBLIC_KEY ups-adapter-mcp
+```
+
+This key starts only the MCP process and disables SSH forwarding and PTYs. Keep private keys outside the repository. A personalized `mcp-client.local.json` may be kept locally; Git ignores it. On Windows, clients that filter environment variables must preserve `PROGRAMDATA`; Windows OpenSSH exited before connecting when this was omitted in the independent client test. In a JSON client configuration, add `"env": {"PROGRAMDATA": "C:\\ProgramData"}` alongside `command` and `args`, using your system's actual value if different.
+
+The implementation supports the tools subset of MCP protocol versions `2024-11-05`, `2025-03-26`, `2025-06-18` and `2025-11-25`: initialization, initialized notification, ping, tool discovery/calls, JSON-RPC errors and newline-delimited UTF-8 stdio. Messages are limited to 64 KiB. It handles one bounded request at a time; notifications do not execute tools or produce replies. HTTP transport, resources, prompts, subscriptions and background tasks are not advertised. A cloud assistant that cannot launch a local SSH process needs a separate authenticated HTTP gateway; that is not provided by this server. The wire format follows the [MCP stdio transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) and [tool protocol](https://modelcontextprotocol.io/specification/2025-11-25/server/tools).
+
 ## Implemented UPS-MIB subset
 
 The following suffixes are relative to `.1.3.6.1.2.1.33.1`. Availability depends on the USB driver. Types and units follow [RFC 1628](https://www.rfc-editor.org/rfc/rfc1628.html), with NUT inputs from its [variable reference](https://networkupstools.org/docs/developer-guide.chunked/apas02.html).
@@ -225,13 +310,22 @@ Web UI and physical display are left optional. A coordinated host/Pi shutdown po
 
 ## Local development checks
 
+On Windows, verify deployment helpers with either Windows PowerShell 5.1 or PowerShell 7:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test_deploy.ps1
+```
+
+This checks address validation, Linux file packaging, standalone archive download handling, real OpenSSH key creation/reuse, and the generated Hermes command, including paths with spaces and apostrophes. It does not connect to a Pi. Run `deploy.ps1` for an actual installation and MCP connection test.
+
 ```sh
 python3 test_ups_mib.py
 python3 test_ups_autodetect.py
 python3 test_setup_pi.py
+python3 test_ups_mcp.py
 bash -n install.sh
 bash -n setup.sh
 git diff --check
 ```
 
-The bridge check uses synthetic inputs and verifies unit conversion, status priority, alarms, missing/invalid data, cache expiry, failed reads/recovery, the `upsc` command boundary, numeric GETNEXT ordering, SET rejection, and the real command-line entry point. The detection check verifies both driver selections, model changes, disconnects, ambiguous/failed scans, serial matching, protection of unmanaged configuration, and service sequencing. The setup check verifies repeated runs, preservation/migration of credentials, manager validation, a private SNMP query, and read-only checks. These are not USB or on-wire SNMP integration tests. The extension protocol follows the [Net-SNMP pass_persist documentation](https://www.net-snmp.org/wiki/index.php/Pass_persist).
+The bridge check uses synthetic inputs and verifies unit conversion, status priority, alarms, missing/invalid data, cache expiry, failed reads/recovery, the `upsc` command boundary, numeric GETNEXT ordering, SET rejection, and the real command-line entry point. The detection check verifies both driver selections, model changes, disconnects, ambiguous/failed scans, serial matching, protection of unmanaged configuration, and service sequencing. The setup check verifies repeated runs, preservation/migration of credentials, manager validation, a private SNMP query, and read-only checks. The MCP check verifies lifecycle/version negotiation, tool discovery, sensor units, fixed command boundaries, invalid requests, failed reads/recovery, message limits and the real stdio process. These are not USB or on-wire SNMP integration tests. The extension protocol follows the [Net-SNMP pass_persist documentation](https://www.net-snmp.org/wiki/index.php/Pass_persist).

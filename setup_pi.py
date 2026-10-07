@@ -159,6 +159,7 @@ def main() -> int:
     files = {
         PROJECT / 'ups_autodetect.py': Path('/usr/local/lib/ups-network-adapter/ups_autodetect.py'),
         PROJECT / 'ups_mib.py': Path('/usr/local/lib/ups-network-adapter/ups_mib.py'),
+        PROJECT / 'ups_mcp.py': Path('/usr/local/lib/ups-network-adapter/ups_mcp.py'),
         PROJECT / 'config/ups-autodetect.service': Path('/etc/systemd/system/ups-autodetect.service'),
         PROJECT / 'config/ups-snmp.service': Path('/etc/systemd/system/ups-snmp.service'),
     }

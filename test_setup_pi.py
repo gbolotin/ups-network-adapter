@@ -67,6 +67,7 @@ def check() -> None:
     for source, target in (
         (PROJECT / 'ups_autodetect.py', '/usr/local/lib/ups-network-adapter/ups_autodetect.py'),
         (PROJECT / 'ups_mib.py', '/usr/local/lib/ups-network-adapter/ups_mib.py'),
+        (PROJECT / 'ups_mcp.py', '/usr/local/lib/ups-network-adapter/ups_mcp.py'),
         (PROJECT / 'config/ups-autodetect.service', '/etc/systemd/system/ups-autodetect.service'),
         (PROJECT / 'config/ups-snmp.service', '/etc/systemd/system/ups-snmp.service'),
         (PROJECT / 'config/ups.conf', None),
@@ -127,6 +128,21 @@ def check() -> None:
                     assert main() == 0
                     assert not write.called and not run.called
             files[str(SNMP_CONFIG)] = first
+            # Installing only the new MCP file must not restart detector or SNMP.
+            target = str(Path('/usr/local/lib/ups-network-adapter/ups_mcp.py'))
+            files[target] = ''
+            run.reset_mock()
+            write.reset_mock()
+            if '--check' in arguments:
+                assert main() == 1 and not run.called and not write.called
+            else:
+                def install_mcp(command, **kwargs):
+                    assert command == ['/bin/bash', str(PROJECT / 'install.sh')]
+                    files[target] = files[str(PROJECT / 'ups_mcp.py')]
+                    return subprocess.CompletedProcess(command, 0)
+                run.side_effect = install_mcp
+                assert main() == 0 and run.call_count == 1 and not write.called
+            files[target] = files[str(PROJECT / 'ups_mcp.py')]
     print('PASS: setup idempotence, credential preservation/migration, manager validation, private SNMP query and read-only checks')
 
 

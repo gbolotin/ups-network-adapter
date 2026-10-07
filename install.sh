@@ -22,6 +22,7 @@ getent group Debian-snmp >/dev/null
 
 install -d -o root -g root -m 0755 /usr/local/lib/ups-network-adapter
 install -o root -g root -m 0644 ups_mib.py /usr/local/lib/ups-network-adapter/ups_mib.py
+install -o root -g root -m 0644 ups_mcp.py /usr/local/lib/ups-network-adapter/ups_mcp.py
 install -o root -g root -m 0644 ups_autodetect.py /usr/local/lib/ups-network-adapter/ups_autodetect.py
 install -o root -g root -m 0644 config/ups-snmp.service /etc/systemd/system/ups-snmp.service
 install -o root -g root -m 0644 config/ups-autodetect.service /etc/systemd/system/ups-autodetect.service
