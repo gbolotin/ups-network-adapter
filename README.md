@@ -55,6 +55,8 @@ If `hermes` is unavailable in your terminal, the script also saves `%USERPROFILE
 
 Verified on 2026-10-07: the Windows deployment checks passed on PowerShell 5.1 and 7. A complete deployment from Windows PowerShell 5.1 to the Pi at `192.168.50.200` passed the four Python checks, NUT/SNMP setup verification, SSH key authorization and all three live MCP tools with an APC BX750MI. Hermes registration on LENOVO720 remains to be run there, using the command generated on that computer.
 
+Also verified on 2026-10-07: a fresh UPS software installation after purging NUT/SNMP and their four libraries, removing adapter/project/configuration files, stopping UPS processes, and clearing MCP key authorizations. The standalone script downloaded its project from GitHub, installed all eight missing packages, detected the APC, passed local SNMP verification, created and authorized a new client key, and successfully called all three MCP tools. A repeat setup and read-only check preserved configuration hashes and service process identities. The OS, login accounts, SSH settings and network settings were preserved; this test did not reimage the SD card. Existing MCP key access was restored after testing and the disposable key revoked. The reset generates a new SNMP community; the previous configuration is retained in a private Pi backup.
+
 ### Install from the Pi shell
 
 At the **Pi's shell prompt**, download and install the project:
