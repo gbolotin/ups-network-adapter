@@ -1,0 +1,12 @@
+[Unit]
+Description=Automatically select the single connected USB UPS
+After=local-fs.target nut-server.service nut-driver-enumerator.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -u /usr/local/lib/ups-network-adapter/ups_autodetect.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

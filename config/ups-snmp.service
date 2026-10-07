@@ -1,0 +1,25 @@
+[Unit]
+Description=UPS-MIB SNMP endpoint for the connected USB UPS
+After=network.target
+
+[Service]
+Type=simple
+User=Debian-snmp
+Group=Debian-snmp
+Environment=SNMP_PERSISTENT_DIR=/var/lib/ups-network-adapter/ups
+StateDirectory=ups-network-adapter/ups
+StateDirectoryMode=0700
+RuntimeDirectory=ups-snmp
+ExecStart=/usr/sbin/snmpd -f -Lo -r -C -c /etc/ups-network-adapter/ups.conf -p /run/ups-snmp/snmpd.pid
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
