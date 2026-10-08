@@ -40,8 +40,19 @@ def parse_scan(output: str) -> tuple[str, tuple[str, ...], str]:
         serial = serial.replace("\\", "\\\\").replace('"', '\\"')
         config += f'    serial = "{serial}"\n'
     config += "    sdorder = -1\n"
-    identity = tuple(fields.get(key, "") for key in ("vendorid", "productid", "serial", "bus", "device"))
+    identity = (driver, fields['vendorid'].lower(), fields['productid'].lower(),
+                fields.get('serial', ''), fields.get('bus', ''), fields.get('device', ''))
     return config, identity, f"Selected {driver} for USB {fields['vendorid']}:{fields['productid']} as ups"
+
+
+def same_usb_device(previous: tuple[str, ...], current: tuple[str, ...]) -> bool:
+    if not previous or not current:
+        return previous == current
+    # Only ignore missing serial data when the driver, IDs and USB address agree.
+    if not all(previous[4:]) or not all(current[4:]):
+        return previous == current
+    return (previous[:3] == current[:3] and previous[4:] == current[4:]
+            and (not previous[3] or not current[3] or previous[3] == current[3]))
 
 
 def scan_usb() -> tuple[str, tuple[str, ...], str]:
@@ -97,13 +108,22 @@ def main() -> None:
     last_message = None
     while True:
         detected = scan_usb()
-        selection = detected[:2]
-        if selection != previous:
+        identity = detected[1]
+        changed = previous is None or not same_usb_device(previous, identity)
+        message = detected[2]
+        if changed:
             apply_selection(detected[0])
-            previous = selection
-        if detected[2] != last_message:
-            print(detected[2], flush=True)
-            last_message = detected[2]
+            previous = identity
+        elif identity and identity[3]:
+            # Learn a newly readable serial without rewriting/restarting NUT.
+            previous = identity
+        elif identity:
+            message = 'USB serial unavailable for unchanged device; keeping current NUT selection'
+        if changed or message != last_message:
+            print(message, flush=True)
+            if changed and identity:
+                print(f'USB selection: bus {identity[4]}, device {identity[5]}, serial {identity[3] or "unavailable"}', flush=True)
+            last_message = message
         # ponytail: periodic USB scan, up to 10 seconds before discovery; use udev events if instant switching is needed.
         time.sleep(10)
 
