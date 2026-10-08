@@ -13,6 +13,11 @@ function Assert-Throws([scriptblock] $Action) {
 }
 
 Assert ($SourceRef -eq 'main') 'Standalone deployment must use main by default.'
+Assert ((Get-SetupCommand '') -eq 'sudo bash setup.sh') 'Default deployment must use the public UDP161 setup defaults.'
+Assert ((Get-SetupCommand '192.0.2.20') -eq 'sudo bash setup.sh --manager 192.0.2.20') 'Deployment must forward the manager restriction.'
+foreach ($manager in @('127.1', '256.1.2.3', '::1', '192.0.2.20;whoami')) {
+    Assert-Throws { Get-SetupCommand $manager }
+}
 Assert ((Confirm-PiAddress '192.168.50.200' 'upsadmin') -eq '192.168.50.200') 'Valid Pi address rejected.'
 foreach ($address in @('-oProxyCommand=x', '127.1', '256.1.2.3', '::1', '192.168.1.1;whoami')) {
     Assert-Throws { Confirm-PiAddress $address 'upsadmin' }
@@ -41,6 +46,11 @@ try {
             try { $text = $reader.ReadToEnd() } finally { $reader.Dispose() }
             Assert (-not $text.Contains("`r")) "Linux file has CR newlines: $name"
             Assert ($text.Length -eq 0 -or [int] $text[0] -ne 0xfeff) "Linux file has BOM: $name"
+            if ($name -eq 'config/ups.conf') {
+                Assert ($text.Contains("agentaddress udp:0.0.0.0:161`n")) 'Packaged SNMP listener must use wildcard UDP161.'
+                Assert ($text.Contains("rocommunity public default -V upsView`n")) 'Packaged SNMP default must use read-only public upsView.'
+                Assert ($text -notmatch '(?m)^\s*rwcommunity') 'Packaged SNMP configuration must not allow writes.'
+            }
             $copy = $source.CreateEntry("github-root/$name")
             $writer = New-Object System.IO.StreamWriter($copy.Open(), $utf8)
             try { $writer.Write($text) } finally { $writer.Dispose() }
@@ -81,7 +91,44 @@ try {
     $yaml = Get-HermesYaml 'C:\Windows\System32\OpenSSH\ssh.exe' $arguments 'C:\ProgramData'
     Assert ($yaml.StartsWith("mcp_servers:`n  ups_adapter:")) 'Wrong Hermes YAML root.'
     Assert ($yaml.Contains('PROGRAMDATA: "C:\\ProgramData"')) 'Hermes YAML omits OpenSSH environment.'
-    Write-Host 'Deployment checks passed: input validation, Linux packaging, standalone download, key reuse and Hermes command quoting.'
+    # Exercise deployment orchestration without a network connection or user-home writes.
+    $deploymentHome = Join-Path ([System.IO.Path]::GetTempPath()) "ups-deploy-test-$testId"
+    [void] [System.IO.Directory]::CreateDirectory($deploymentHome)
+    $previousHome = $env:USERPROFILE
+    try {
+        $env:USERPROFILE = $deploymentHome
+        $PiAddress = '192.0.2.200'
+        function Find-OpenSshTool([string] $Name) { return $Name }
+        function New-ProjectArchive { }
+        function scp { $global:LASTEXITCODE = 0 }
+        function Invoke-RemoteScript([string] $Ssh, [string[]] $Options, [string] $Target, [string] $Body, [switch] $Terminal) {
+            Assert ($Target -eq 'upsadmin@192.0.2.200') 'Wrong deployment target.'
+            if ($Terminal) { $script:installationBody = $Body }
+        }
+        function New-McpKey { return 'ssh-ed25519 dGVzdA== ups-adapter-mcp' }
+        function Test-McpConnection { }
+        foreach ($manager in @('', '192.0.2.20')) {
+            $ManagerAddress = $manager
+            $deploymentOutput = (& { Invoke-Deployment } *>&1 | Out-String)
+            Assert ($deploymentOutput.Contains('default UDP 161')) 'Deployment omits the SNMP default port.'
+            if ($manager) {
+                Assert ($deploymentOutput.Contains("restricted to loopback and manager $manager")) 'Deployment omits the manager restriction.'
+            } else {
+                Assert ($deploymentOutput.Contains('Fresh SNMP defaults allow every reachable IPv4 client')) 'Deployment must warn about broad public access.'
+            }
+            $expectedSetup = Get-SetupCommand $manager
+            Assert ($installationBody -match ('(?m)^' + [regex]::Escape($expectedSetup) + '\r?$')) 'Remote deployment did not use the validated setup command.'
+            Assert (-not $installationBody.Contains('__SETUP_COMMAND__')) 'Deployment left an unresolved command placeholder.'
+        }
+    } finally {
+        $env:USERPROFILE = $previousHome
+        foreach ($name in @('add-ups-to-hermes.ps1', 'ups-adapter-hermes.yaml')) {
+            $path = Join-Path $deploymentHome $name
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
+        }
+        Remove-Item -LiteralPath $deploymentHome
+    }
+    Write-Host 'Deployment checks passed: Pi/manager validation, public UDP161 packaging, default/restricted orchestration, standalone download, key reuse and Hermes command quoting.'
 } finally {
     # Delete only the individual temporary files created by this check.
     foreach ($path in @($archivePath, $sourceArchive, $downloadArchive, $keyPath, "$keyPath.pub")) {

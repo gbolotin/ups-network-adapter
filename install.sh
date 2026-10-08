@@ -32,6 +32,9 @@ if [[ ! -e /etc/ups-network-adapter/ups.conf ]]; then
     install -o root -g Debian-snmp -m 0640 config/ups.conf /etc/ups-network-adapter/ups.conf
 fi
 systemctl daemon-reload
+# Dedicated adapter owns the standard SNMP port; do not leave the distro
+# daemon enabled to reclaim UDP 161 after a reboot.
+systemctl disable --now snmpd.service
 
 if [[ ${1:-} == --configure-nut ]]; then
     backup=$(mktemp -d /root/ups-adapter-backup-XXXXXXXX)

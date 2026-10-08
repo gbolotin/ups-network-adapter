@@ -5,7 +5,6 @@ import ipaddress
 import os
 from pathlib import Path
 import re
-import secrets
 import shlex
 import shutil
 import subprocess
@@ -84,14 +83,16 @@ def snmp_port(content: str) -> int:
 
 def prepare_snmp(current: str, legacy: list[str], template: str, manager: str | None) -> tuple[str, str, int]:
     content = current or template
-    if not communities(content):
+    if not communities(current):
         content = next((old for old in legacy if communities(old)), content)
     entries = communities(content)
     # Remove active example credentials before enabling any LAN binding.
     content = '\n'.join(line for line in content.splitlines() if not (
         re.match(r'^\s*rocommunity\s+', line) and shlex.split(line, comments=True)[1] in PLACEHOLDERS
     )) + '\n'
-    secret = entries[0][1] if entries else secrets.token_hex(24)
+    if not entries:
+        content += 'rocommunity public default -V upsView\n'
+    secret = entries[0][1] if entries else 'public'
     if not any(len(entry) >= 3 and entry[2] in {'127.0.0.1', '127.0.0.1/32'} for entry in entries):
         content += f'rocommunity {secret} 127.0.0.1/32 -V upsView\n'
     else:
@@ -104,10 +105,19 @@ def prepare_snmp(current: str, legacy: list[str], template: str, manager: str | 
         if view not in content.splitlines():
             content += view + '\n'
     port = snmp_port(content)
+    if port == 1161:
+        # Migrate the former project default; preserve deliberate custom ports.
+        port = 161
+        content = setting(content, r'^\s*agentaddress\s+', 'agentaddress udp:0.0.0.0:161')
     if manager:
         manager = str(ipaddress.IPv4Address(manager))
         content = setting(content, r'^\s*agentaddress\s+', f'agentaddress udp:0.0.0.0:{port}')
-        if not any(len(entry) >= 3 and entry[2] in {manager, manager + '/32'} for entry in communities(content)):
+        # Explicit manager mode replaces broad/previous IPv4 ACLs, not just adds
+        # a rule that a default source could bypass. Keep the local probe working.
+        content = '\n'.join(line for line in content.splitlines()
+                            if not re.match(r'^\s*rocommunity(?:\s|$)', line)) + '\n'
+        content += f'rocommunity {secret} 127.0.0.1/32 -V upsView\n'
+        if manager != '127.0.0.1':
             content += f'rocommunity {secret} {manager}/32 -V upsView\n'
     elif not re.search(r'udp:(?:(127\.0\.0\.1|0\.0\.0\.0):)?' + str(port) + r'(,|\s|$)', content):
         match = re.search(r'^\s*agentaddress\s+(.+)$', content, re.MULTILINE)
@@ -149,7 +159,7 @@ def snmp_probe(secret: str, port: int) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true', help='Report state without making changes')
-    parser.add_argument('--manager', type=ipaddress.IPv4Address, help='Allow this monitoring machine over IPv4')
+    parser.add_argument('--manager', type=ipaddress.IPv4Address, help='Restrict IPv4 community access to loopback and this monitoring machine')
     args = parser.parse_args()
     print('Pi:', read(Path('/proc/device-tree/model')).strip('\x00\n') or 'model unavailable', flush=True)
     temperature = run(['vcgencmd', 'measure_temp'], check=False, capture_output=True, text=True) if shutil.which('vcgencmd') else None
@@ -272,7 +282,7 @@ def main() -> int:
     print('NUT listens on all IPv4 interfaces at TCP 3493 (including loopback).', flush=True)
     print('Configuration: /etc/ups-network-adapter/ups.conf (community is kept private)', flush=True)
     if not args.manager:
-        print('For a new LAN manager: sudo bash setup.sh --manager MONITORING_PC_IP', flush=True)
+        print('To restrict IPv4 community access: sudo bash setup.sh --manager MONITORING_PC_IP', flush=True)
     print('Setup checks passed.' if values else 'Software checks passed; USB readings still need verification.', flush=True)
     return 0
 

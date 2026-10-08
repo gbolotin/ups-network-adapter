@@ -1,10 +1,14 @@
 # Raspberry Pi UPS network adapter
 
-One USB UPS → automatic driver selection → NUT `ups` → Python bridge → one Net-SNMP endpoint → monitoring client.
+One USB UPS → automatic driver selection → NUT `ups` → Python bridge → one Net-SNMP endpoint (UDP `161`) → monitoring client.
+
+**SNMP defaults:** `agentaddress udp:0.0.0.0:161` and `rocommunity public default -V upsView`. This permits read-only system/UPS-MIB queries from **any reachable IPv4 client**. Use only on a trusted LAN/VLAN with firewall restrictions; `public` is not a secret. Setup disables the standard `snmpd.service` before starting the adapter endpoint. Existing communities/ACLs are preserved unless explicit manager restriction is requested; the former default port `1161` migrates to `161` with a backup.
 
 An installable Raspberry Pi 4 project for **read-only RFC 1628 UPS-MIB monitoring** of **one connected UPS at a time**, either an APC BX750MI or an Eaton 5E 2200i. Connect either UPS to any Pi USB host port. The adapter automatically selects the USB driver at boot and when the connected UPS changes. Both models use the same NUT name (`ups`), SNMP address, port, and community, so replacing the UPS requires no client configuration change. Read-only MCP tools also provide live UPS readings, Pi health and adapter service states to AI assistants over SSH. Python uses only its standard library; NUT handles USB and Net-SNMP handles SNMP packets and access control.
 
 **Status:** on 2026-10-07, `setup.sh` was tested on a Raspberry Pi 4 with NUT 2.8.1 and an APC BX750MI (`051d:0002`). Initial migration, a repeat run without configuration or service changes, a read-only check, and recovery of a stopped SNMP service all passed. Live SNMP v2c GET returned the correct model, charge, and mains source; walk and bulkwalk returned 20 UPS-MIB readings in increasing OID order. All three synthetic checks also passed on the Pi. On 2026-10-08, NUT wildcard binding and LAN protocol access were verified; see the deployment notes below for the USB communication issue observed then. Eaton detection/model switching, reboot and outage behavior, SNMP LAN access, and the monitoring client's interoperability remain hardware acceptance checks.
+
+The dated verification notes are historical results from before the UDP `161`/`public` default change, not evidence of a new hardware deployment. The current change is covered by local regression checks; it has not been deployed to the Pi as part of this update.
 
 ## Hardware and compatibility
 
@@ -51,7 +55,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -PiAddress 192.
 
 Run this in a normal PowerShell window; Administrator is not required when OpenSSH Client is already installed. `-ExecutionPolicy Bypass` applies only to this PowerShell process and avoids a policy blocking the script.
 
-Enter the Pi password at the SSH prompts and again if `sudo` asks. On a first connection, verify the displayed host fingerprint against the Pi before accepting it. The script copies the shell/Python/configuration/test files with Linux newlines, backs up any existing Pi project in its home directory, runs the checks and `sudo bash setup.sh`, and then verifies the MCP tools over SSH. Setup configures one automatically detected USB UPS and replaces all active NUT `LISTEN` lines with **`LISTEN 0.0.0.0 3493`** on both new and existing installations. NUT accepts IPv4 connections on all interfaces, including loopback, for Home Assistant and other NUT clients. Setup preserves existing SNMP access settings; SNMP remains loopback-only on a new installation unless `--manager` is supplied. Automated shutdown remains disabled.
+To replace the default broad SNMP access with loopback and one monitoring computer, supply its IPv4 address (not the Pi's address):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -PiAddress 192.168.50.200 -ManagerAddress 192.0.2.20
+```
+
+`-ManagerAddress` is optional and forwards `--manager` to setup. Without it, fresh installs use public access; existing restricted ACLs remain restricted.
+
+Enter the Pi password at the SSH prompts and again if `sudo` asks. On a first connection, verify the displayed host fingerprint against the Pi before accepting it. The script copies the shell/Python/configuration/test files with Linux newlines, backs up any existing Pi project in its home directory, runs the checks and `sudo bash setup.sh`, and then verifies the MCP tools over SSH. Setup configures one automatically detected USB UPS and replaces all active NUT `LISTEN` lines with **`LISTEN 0.0.0.0 3493`** on both new and existing installations. NUT accepts IPv4 connections on all interfaces, including loopback, for Home Assistant and other NUT clients. Setup preserves existing SNMP communities and ACLs, migrates the former default UDP `1161` to `161`, and disables the standard `snmpd.service`. Fresh SNMP installations listen on all IPv4 interfaces at UDP `161` with read-only community `public` for any source. Other custom ports are preserved. Automated shutdown remains disabled.
 
 The script creates `%USERPROFILE%\.ssh\ups_adapter_mcp` without a passphrase, or reuses an existing unencrypted Ed25519 key there. The private key stays on your Windows computer. It authorizes the public key on the Pi with a forced MCP command and disabled forwarding/PTYs, preserving other keys and backing up changed `authorized_keys`. Installation uses password authentication because the restricted MCP key cannot run administrative commands. Keep SSH password login available for rerunning deployment.
 
@@ -61,7 +73,7 @@ If `hermes` is unavailable in your terminal, the script also saves `%USERPROFILE
 
 Verified on 2026-10-07: the Windows deployment checks passed on PowerShell 5.1 and 7. A complete deployment from Windows PowerShell 5.1 to the Pi at `192.168.50.200` passed the four Python checks, NUT/SNMP setup verification, SSH key authorization and all three live MCP tools with an APC BX750MI. Hermes registration on LENOVO720 remains to be run there, using the command generated on that computer.
 
-Also verified on 2026-10-07: a fresh UPS software installation after purging NUT/SNMP and their four libraries, removing adapter/project/configuration files, stopping UPS processes, and clearing MCP key authorizations. The standalone script downloaded its project from GitHub, installed all eight missing packages, detected the APC, passed local SNMP verification, created and authorized a new client key, and successfully called all three MCP tools. A repeat setup and read-only check preserved configuration hashes and service process identities. The OS, login accounts, SSH settings and network settings were preserved; this test did not reimage the SD card. Existing MCP key access was restored after testing and the disposable key revoked. The reset generates a new SNMP community; the previous configuration is retained in a private Pi backup.
+Also verified on 2026-10-07: a fresh UPS software installation after purging NUT/SNMP and their four libraries, removing adapter/project/configuration files, stopping UPS processes, and clearing MCP key authorizations. The standalone script downloaded its project from GitHub, installed all eight missing packages, detected the APC, passed local SNMP verification, created and authorized a new client key, and successfully called all three MCP tools. A repeat setup and read-only check preserved configuration hashes and service process identities. The OS, login accounts, SSH settings and network settings were preserved; this test did not reimage the SD card. Existing MCP key access was restored after testing and the disposable key revoked. That historical reset generated a new SNMP community under the previous defaults; the previous configuration was retained in a private Pi backup. Current fresh installations use `public` instead.
 
 Verified on 2026-10-08: all four Python checks passed locally and on the Pi, and Windows deployment checks passed on PowerShell 5.1 and 7. Deployment to `192.168.50.200` backed up and replaced the old NUT listeners with one `LISTEN 0.0.0.0 3493`. The live socket and a LAN `LIST UPS` exchange confirmed access on TCP 3493; migration preserved the UPS/SNMP configuration hashes and detector/SNMP process identities. Repeat setup and the read-only check preserved configuration hashes and service process identities, returning nonzero because live UPS readings were unavailable. SSH MCP initialization, discovery, Pi health and adapter status passed. Full deployment validation stopped because the APC USB driver could not read its device; driver failures also appear in logs from before deployment. LAN UPS queries therefore returned `ERR DRIVER-NOT-CONNECTED`, and the UPS MCP tool reported unavailable readings. Reconnect the USB data cable and rerun setup to verify live telemetry; this is separate from the successful listener migration.
 
@@ -94,17 +106,17 @@ cd ~/ups-network-adapter
 sudo bash setup.sh
 ```
 
-`setup.sh` checks the installed packages, project files, NUT/SNMP configuration, and service states. It installs missing packages, prepares or repairs NUT autodetection, migrates the previous APC/Eaton SNMP settings when available, and enables the single SNMP service. It preserves configured communities and manager ACLs. If no community is configured, it generates a random secret in `/etc/ups-network-adapter/ups.conf`; it does not print the secret or pass it in SNMP command arguments. Changed configurations are backed up under private `/root/ups-adapter-backup-...` directories.
+`setup.sh` checks the installed packages, project files, NUT/SNMP configuration, and service states. It installs missing packages, prepares or repairs NUT autodetection, migrates the previous APC/Eaton SNMP settings when available, and enables the single SNMP service. It preserves configured communities and manager ACLs. If no community is configured, it supplies `rocommunity public default -V upsView` in `/etc/ups-network-adapter/ups.conf`. The previous default UDP `1161` migrates to a wildcard IPv4 listener on UDP `161`; other custom ports remain unchanged. The standard `snmpd.service` is stopped and disabled to release UDP `161` before adapter services start. Existing configured communities are not printed or passed in SNMP command arguments. Changed configurations are backed up under private `/root/ups-adapter-backup-...` directories.
 
 The command prints Pi temperature, detected UPS model/status/charge, and a local SNMP verification result. With no UPS attached, software checks can pass while the report explains that USB readings still need verification. An attached UPS without live NUT readings, an ambiguous/failed USB scan, or a failed SNMP query causes a nonzero exit. The command requires the copied project files; `setup.sh` uses the standard-library helper `setup_pi.py` and the existing installer.
 
-To allow your monitoring computer over the LAN, replace the example address with that computer's IPv4 address:
+To restrict IPv4 community access to loopback and one monitoring computer, replace the example address with that computer's IPv4 address:
 
 ```sh
 sudo bash setup.sh --manager 192.0.2.20
 ```
 
-This enables IPv4 SNMP listening with access limited by the configured communities and source ACLs, adding the requested manager. Existing ACLs remain in place. The first setup without `--manager` uses loopback only. Read the community in the private configuration file when configuring your monitoring client; do not share it in diagnostic output.
+This replaces all active IPv4 `rocommunity` rules with loopback and the requested manager, using the existing local-probe community (or `public` for a fresh setup). In particular, it removes the broad `default` rule so other clients cannot bypass the manager restriction. A changed configuration is backed up. A subsequent setup without `--manager` preserves the restriction; supplying a different manager replaces the previous manager. Read any customized community in the private configuration file when configuring your client; do not share it in diagnostic output.
 
 Rerun `sudo bash setup.sh` after copying updates or to repair the adapter. A healthy repeat run preserves configuration and does not restart UPS/SNMP services. For a read-only check of packages, configuration, services, NUT, and local SNMP:
 
@@ -152,11 +164,18 @@ Confirm the actual model and `ups.status` before proceeding. A missing runtime/c
 
 If a driver fails, inspect `systemctl list-units 'nut-driver@*'` and `journalctl -u nut-driver-enumerator -u nut-server -b`. Check permissions and the scan output before changing protocols. Do not enable APC low-battery/calibration workarounds blindly: inspect the installed `man usbhid-ups` and compare the reported state to the unit. Some workarounds in current upstream manuals may not exist in your distro version.
 
-For later code updates, use `sudo bash setup.sh` to install changes and restart affected services. The lower-level `sudo bash install.sh` installs files only; you must restart the services yourself. Its `--configure-nut` option explicitly resets the generated UPS selection and stops SNMP until you start it again.
+For later code updates, use `sudo bash setup.sh` to install changes and restart affected services. The lower-level `sudo bash install.sh` installs files and stops/disables the standard `snmpd.service`; you must restart the adapter services yourself. Its `--configure-nut` option explicitly resets the generated UPS selection and stops SNMP until you start it again.
 
 ## 3. Configure SNMP access
 
-`setup.sh` supplies a community and local access, and its `--manager` option adds your monitoring machine. For manual customization, edit `/etc/ups-network-adapter/ups.conf`. The raw template has no active community. Generate a random value (or reuse your previous secret), then replace the example community and allow only your monitoring machine:
+The template and fresh setup use:
+
+```text
+agentaddress udp:0.0.0.0:161
+rocommunity public default -V upsView
+```
+
+This includes loopback and all LAN IPv4 interfaces; it does not pin the Pi's DHCP address. For tighter access, use `setup.sh --manager` or edit `/etc/ups-network-adapter/ups.conf`. To use a private community, generate a random value (or reuse your previous secret), **remove the public/default rule**, and replace it with loopback and your manager rules:
 
 ```sh
 python3 -c 'import secrets; print(secrets.token_hex(24))'
@@ -166,16 +185,16 @@ sudoedit /etc/ups-network-adapter/ups.conf
 Example addresses for a Pi at `192.0.2.200` and a manager at `192.0.2.20` (replace both addresses with yours):
 
 ```text
-agentaddress udp:127.0.0.1:1161,udp:192.0.2.200:1161
+agentaddress udp:0.0.0.0:161
 rocommunity YOUR_GENERATED_SECRET 127.0.0.1/32 -V upsView
 rocommunity YOUR_GENERATED_SECRET 192.0.2.20/32 -V upsView
 ```
 
-Keep the other template lines, including `--ups ups`. Use the same community and port `1161` regardless of which UPS is connected. For an initial local test, keep the default loopback address and enable only the loopback `rocommunity` line.
+Keep the other template lines, including `--ups ups`. Use the same community and port `161` regardless of which UPS is connected. The wildcard listener already includes loopback; do not add a second loopback binding. For local-only monitoring, bind `udp:127.0.0.1:161` and keep only the loopback `rocommunity` rule.
 
 SNMP v1/v2c GET, GETNEXT, and v2c GETBULK are handled by Net-SNMP. Access is read-only, limited to system identification and UPS-MIB; SET is also rejected inside the bridge. Communities are sent in clear text: use a trusted management LAN/VLAN and restrict UDP ingress to your manager on the chosen ports. Do not forward these ports from the Internet. This project's configurations do not provision SNMPv3 users.
 
-If your client requires UDP `161`, change the endpoint's port. On this dedicated Pi, stop/disable the distro `snmpd.service` before taking its port. The adapter's service is `ups-snmp.service`; its default port `1161` avoids a conflict with the distro daemon.
+UDP `161` is the default. Both `install.sh` and setup stop/disable the distro `snmpd.service` on this dedicated Pi so it cannot reclaim the port after reboot. The adapter service is `ups-snmp.service`. Do not re-enable the distro daemon on the same address/port. Existing UDP `1161` configurations migrate with a private backup on the next setup; update clients to port `161`. Existing community/source ACLs survive that migration, so an older restricted setup does not become public. Deliberate ports other than `1161` are preserved.
 
 ```sh
 sudo systemctl enable ups-snmp.service
@@ -191,18 +210,18 @@ journalctl -u ups-snmp -b
 
 ## 4. Verify actual SNMP
 
-Run on the Pi with the loopback ACL enabled. `COMMUNITY` means the secret you configured; `read` avoids recording its value in shell history. The value can still be visible in a running SNMP client's process arguments.
+Run on the Pi with loopback access enabled (included in the fresh defaults). `COMMUNITY` is `public` for a fresh setup, or your preserved/custom community; `read` avoids recording a custom secret in shell history. The value can still be visible in a running SNMP client's process arguments.
 
 ```sh
 read -rsp 'SNMP community: ' COMMUNITY
 printf '\n'
-snmpget -v2c -c "$COMMUNITY" -t 3 -r 1 -On udp:127.0.0.1:1161 .1.3.6.1.2.1.33.1.4.1.0
-snmpwalk -v2c -c "$COMMUNITY" -t 3 -r 1 -On udp:127.0.0.1:1161 .1.3.6.1.2.1.33
-snmpbulkwalk -v2c -c "$COMMUNITY" -t 3 -r 1 -On udp:127.0.0.1:1161 .1.3.6.1.2.1.33
+snmpget -v2c -c "$COMMUNITY" -t 3 -r 1 -On udp:127.0.0.1:161 .1.3.6.1.2.1.33.1.4.1.0
+snmpwalk -v2c -c "$COMMUNITY" -t 3 -r 1 -On udp:127.0.0.1:161 .1.3.6.1.2.1.33
+snmpbulkwalk -v2c -c "$COMMUNITY" -t 3 -r 1 -On udp:127.0.0.1:161 .1.3.6.1.2.1.33
 unset COMMUNITY
 ```
 
-Repeat from the allowed manager using the Pi's LAN address. Then disconnect the APC's USB cable, connect the Eaton, and repeat using the **same endpoint**. `3` is normal mains output; `5` is battery output. Missing sensors return `noSuchInstance` or are skipped by a walk; they are not reported as zero. Numeric OIDs work without installing MIB text files. Configure UPSWarden or another RFC 1628 client with the Pi IP, port `1161`, SNMP v2c, and the community. Actual UPSWarden interoperability remains an acceptance check.
+Repeat from the allowed manager using the Pi's LAN address. Then disconnect the APC's USB cable, connect the Eaton, and repeat using the **same endpoint**. `3` is normal mains output; `5` is battery output. Missing sensors return `noSuchInstance` or are skipped by a walk; they are not reported as zero. Numeric OIDs work without installing MIB text files. Configure UPSWarden or another RFC 1628 client with the Pi IP, port `161`, SNMP v2c, and community `public` for a fresh installation (or the existing custom community/port). Actual UPSWarden interoperability remains an acceptance check.
 
 ## NUT network clients and Home Assistant
 
@@ -337,7 +356,7 @@ On Windows, verify deployment helpers with either Windows PowerShell 5.1 or Powe
 powershell -NoProfile -ExecutionPolicy Bypass -File .\test_deploy.ps1
 ```
 
-This checks address validation, Linux file packaging, standalone archive download handling, real OpenSSH key creation/reuse, and the generated Hermes command, including paths with spaces and apostrophes. It does not connect to a Pi. Run `deploy.ps1` for an actual installation and MCP connection test.
+This checks Pi/manager address validation, default/restricted setup commands, Linux file packaging (including the SNMP defaults), standalone archive download handling, real OpenSSH key creation/reuse, and the generated Hermes command, including paths with spaces and apostrophes. It does not connect to a Pi. Run `deploy.ps1` for an actual installation and MCP connection test.
 
 ```sh
 python3 test_ups_mib.py
@@ -349,4 +368,4 @@ bash -n setup.sh
 git diff --check
 ```
 
-The bridge check uses synthetic inputs and verifies unit conversion, status priority, alarms, missing/invalid data, cache expiry, failed reads/recovery, the `upsc` command boundary, numeric GETNEXT ordering, SET rejection, and the real command-line entry point. The detection check verifies both driver selections, model changes, disconnects, ambiguous/failed scans, serial matching, protection of unmanaged configuration, and service sequencing. The setup check verifies repeated runs, migration from multiple NUT listeners to one wildcard with a backup and only a NUT server restart, preservation/migration of credentials, manager validation, a private SNMP query, and read-only checks. The MCP check verifies lifecycle/version negotiation, tool discovery, sensor units, fixed command boundaries, invalid requests, failed reads/recovery, message limits and the real stdio process. These are not USB or on-wire SNMP integration tests. The extension protocol follows the [Net-SNMP pass_persist documentation](https://www.net-snmp.org/wiki/index.php/Pass_persist).
+The bridge check uses synthetic inputs and verifies unit conversion, status priority, alarms, missing/invalid data, cache expiry, failed reads/recovery, the `upsc` command boundary, numeric GETNEXT ordering, SET rejection, and the real command-line entry point. The detection check verifies both driver selections, model changes, disconnects, ambiguous/failed scans, serial matching, protection of unmanaged configuration, and service sequencing. The setup check verifies UDP `161`/`public` defaults, backed-up migration from UDP `1161`, disabling distro SNMP before adapter service restarts, repeated runs, migration from multiple NUT listeners to one wildcard with a backup and only a NUT server restart, preservation/migration of communities/ACLs and custom ports, manager validation/restriction, a private SNMP query, and read-only checks. The MCP check verifies lifecycle/version negotiation, tool discovery, sensor units, fixed command boundaries, invalid requests, failed reads/recovery, message limits and the real stdio process. These are not USB or on-wire SNMP integration tests. The extension protocol follows the [Net-SNMP pass_persist documentation](https://www.net-snmp.org/wiki/index.php/Pass_persist).

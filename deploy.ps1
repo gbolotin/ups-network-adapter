@@ -3,7 +3,8 @@
 param(
     [string] $PiAddress,
     [string] $PiUser = 'upsadmin',
-    [string] $SourceRef = 'main'
+    [string] $SourceRef = 'main',
+    [string] $ManagerAddress
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,6 +32,12 @@ function Confirm-PiAddress([string] $Address, [string] $User) {
     }
     if ($User -notmatch '^[a-z_][a-z0-9_-]{0,31}$') { throw 'Enter a valid Linux username.' }
     return $parsed.ToString()
+}
+
+function Get-SetupCommand([string] $Manager) {
+    if (-not $Manager) { return 'sudo bash setup.sh' }
+    $validated = Confirm-PiAddress $Manager 'upsadmin'
+    return "sudo bash setup.sh --manager $validated"
 }
 
 # ProcessStartInfo.Arguments uses Windows native quoting, including empty arguments.
@@ -245,6 +252,7 @@ function Get-HermesYaml([string] $Ssh, [string[]] $Arguments, [string] $ProgramD
 function Invoke-Deployment {
     if (-not $PiAddress) { $PiAddress = Read-Host 'Raspberry Pi IPv4 address (for example 192.168.50.200)' }
     $address = Confirm-PiAddress $PiAddress $PiUser
+    $setupCommand = Get-SetupCommand $ManagerAddress
     $ssh = Find-OpenSshTool 'ssh'
     $scp = Find-OpenSshTool 'scp'
     $keygen = Find-OpenSshTool 'ssh-keygen'
@@ -288,8 +296,8 @@ cd ups-network-adapter
 for test in test_ups_mib.py test_ups_autodetect.py test_setup_pi.py test_ups_mcp.py; do
     /usr/bin/python3 "$test"
 done
-sudo bash setup.sh
-'@.Replace('__ARCHIVE__', $basename).Replace('__ID__', $id)
+__SETUP_COMMAND__
+'@.Replace('__ARCHIVE__', $basename).Replace('__ID__', $id).Replace('__SETUP_COMMAND__', $setupCommand)
         Write-Host 'Installing and checking NUT, USB autodetection, SNMP and MCP on the Pi...'
         Invoke-RemoteScript $ssh $adminOptions $target $installation -Terminal
         $keyPath = Join-Path $env:USERPROFILE '.ssh\ups_adapter_mcp'
@@ -302,6 +310,10 @@ sudo bash setup.sh
         Test-McpConnection $ssh $mcpArguments
         Write-Host "Home Assistant NUT: host $address, port 3493; leave username and password empty."
         Write-Host 'NUT listens on all IPv4 interfaces; an IP change requires updating clients, not the Pi listener.'
+        Write-Host "SNMP: host $address, default UDP 161; fresh installations use read-only community public."
+        Write-Host 'Old UDP 1161 migrates to 161; existing communities/ACLs and other custom ports are preserved unless manager mode replaces the ACLs.'
+        if ($ManagerAddress) { Write-Host "SNMP IPv4 community access restricted to loopback and manager $ManagerAddress." }
+        else { Write-Warning 'Fresh SNMP defaults allow every reachable IPv4 client. Use a trusted LAN/firewall or -ManagerAddress MONITORING_PC_IP.' }
         $command = Get-HermesCommand $ssh $mcpArguments $env:ProgramData
         $commandFile = Join-Path $env:USERPROFILE 'add-ups-to-hermes.ps1'
         [System.IO.File]::WriteAllText($commandFile, "$command`nif (`$LASTEXITCODE -ne 0) { throw 'Hermes MCP registration failed.' }`n", $utf8)
