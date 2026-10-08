@@ -4,7 +4,7 @@ One USB UPS → automatic driver selection → NUT `ups` → Python bridge → o
 
 An installable Raspberry Pi 4 project for **read-only RFC 1628 UPS-MIB monitoring** of **one connected UPS at a time**, either an APC BX750MI or an Eaton 5E 2200i. Connect either UPS to any Pi USB host port. The adapter automatically selects the USB driver at boot and when the connected UPS changes. Both models use the same NUT name (`ups`), SNMP address, port, and community, so replacing the UPS requires no client configuration change. Read-only MCP tools also provide live UPS readings, Pi health and adapter service states to AI assistants over SSH. Python uses only its standard library; NUT handles USB and Net-SNMP handles SNMP packets and access control.
 
-**Status:** on 2026-10-07, `setup.sh` was tested on a Raspberry Pi 4 with NUT 2.8.1 and an APC BX750MI (`051d:0002`). Initial migration, a repeat run without configuration or service changes, a read-only check, and recovery of a stopped SNMP service all passed. Live SNMP v2c GET returned the correct model, charge, and mains source; walk and bulkwalk returned 20 UPS-MIB readings in increasing OID order. All three synthetic checks also passed on the Pi. Eaton detection/model switching, reboot and outage behavior, LAN access, and the monitoring client's interoperability remain hardware acceptance checks.
+**Status:** on 2026-10-07, `setup.sh` was tested on a Raspberry Pi 4 with NUT 2.8.1 and an APC BX750MI (`051d:0002`). Initial migration, a repeat run without configuration or service changes, a read-only check, and recovery of a stopped SNMP service all passed. Live SNMP v2c GET returned the correct model, charge, and mains source; walk and bulkwalk returned 20 UPS-MIB readings in increasing OID order. All three synthetic checks also passed on the Pi. On 2026-10-08, NUT wildcard binding and LAN protocol access were verified; see the deployment notes below for the USB communication issue observed then. Eaton detection/model switching, reboot and outage behavior, SNMP LAN access, and the monitoring client's interoperability remain hardware acceptance checks.
 
 ## Hardware and compatibility
 
@@ -25,12 +25,12 @@ Target: Raspberry Pi OS Lite 64-bit with Python 3.10+, systemd, and distro NUT 2
 
 ### One Windows script, including Hermes MCP
 
-Run [deploy.ps1](deploy.ps1) **on the Windows computer where your Hermes backend runs** (for example LENOVO720). The Pi must already boot Raspberry Pi OS with SSH enabled, have network access for package installation, and allow your account to use `sudo`. Windows needs the built-in OpenSSH Client. Download the script alongside this project, or download just the script: when project files are absent, it fetches them from this repository's `feature/mcp-server` branch. That branch currently contains MCP; the v0.1.0 release does not.
+Run [deploy.ps1](deploy.ps1) **on the Windows computer where your Hermes backend runs** (for example LENOVO720). The Pi must already boot Raspberry Pi OS with SSH enabled, have network access for package installation, and allow your account to use `sudo`. Windows needs the built-in OpenSSH Client. Download the script alongside this project, or download just the script: when project files are absent, it fetches them from this repository's `main` branch. The v0.1.0 release predates MCP and the wildcard NUT listener; use `main` for the current installer.
 
 To download just the script from PowerShell:
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/gbolotin/ups-network-adapter/feature/mcp-server/deploy.ps1 -OutFile deploy.ps1
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/gbolotin/ups-network-adapter/main/deploy.ps1 -OutFile deploy.ps1
 ```
 
 In **Windows PowerShell**, from the directory containing the script:
@@ -45,7 +45,9 @@ It asks for the Pi's IPv4 address. The account defaults to `upsadmin`; for anoth
 powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -PiAddress 192.168.50.200 -PiUser upsadmin
 ```
 
-Enter the Pi password at the SSH prompts and again if `sudo` asks. On a first connection, verify the displayed host fingerprint against the Pi before accepting it. The script copies the shell/Python/configuration/test files with Linux newlines, backs up any existing Pi project in its home directory, runs the checks and `sudo bash setup.sh`, and then verifies the MCP tools over SSH. Setup configures one automatically detected USB UPS; it preserves existing SNMP access settings, with loopback-only access on a new installation. It does not enable NUT LAN access or automated shutdown.
+Run this in a normal PowerShell window; Administrator is not required when OpenSSH Client is already installed. `-ExecutionPolicy Bypass` applies only to this PowerShell process and avoids a policy blocking the script.
+
+Enter the Pi password at the SSH prompts and again if `sudo` asks. On a first connection, verify the displayed host fingerprint against the Pi before accepting it. The script copies the shell/Python/configuration/test files with Linux newlines, backs up any existing Pi project in its home directory, runs the checks and `sudo bash setup.sh`, and then verifies the MCP tools over SSH. Setup configures one automatically detected USB UPS and replaces all active NUT `LISTEN` lines with **`LISTEN 0.0.0.0 3493`** on both new and existing installations. NUT accepts IPv4 connections on all interfaces, including loopback, for Home Assistant and other NUT clients. Setup preserves existing SNMP access settings; SNMP remains loopback-only on a new installation unless `--manager` is supplied. Automated shutdown remains disabled.
 
 The script creates `%USERPROFILE%\.ssh\ups_adapter_mcp` without a passphrase, or reuses an existing unencrypted Ed25519 key there. The private key stays on your Windows computer. It authorizes the public key on the Pi with a forced MCP command and disabled forwarding/PTYs, preserving other keys and backing up changed `authorized_keys`. Installation uses password authentication because the restricted MCP key cannot run administrative commands. Keep SSH password login available for rerunning deployment.
 
@@ -56,6 +58,8 @@ If `hermes` is unavailable in your terminal, the script also saves `%USERPROFILE
 Verified on 2026-10-07: the Windows deployment checks passed on PowerShell 5.1 and 7. A complete deployment from Windows PowerShell 5.1 to the Pi at `192.168.50.200` passed the four Python checks, NUT/SNMP setup verification, SSH key authorization and all three live MCP tools with an APC BX750MI. Hermes registration on LENOVO720 remains to be run there, using the command generated on that computer.
 
 Also verified on 2026-10-07: a fresh UPS software installation after purging NUT/SNMP and their four libraries, removing adapter/project/configuration files, stopping UPS processes, and clearing MCP key authorizations. The standalone script downloaded its project from GitHub, installed all eight missing packages, detected the APC, passed local SNMP verification, created and authorized a new client key, and successfully called all three MCP tools. A repeat setup and read-only check preserved configuration hashes and service process identities. The OS, login accounts, SSH settings and network settings were preserved; this test did not reimage the SD card. Existing MCP key access was restored after testing and the disposable key revoked. The reset generates a new SNMP community; the previous configuration is retained in a private Pi backup.
+
+Verified on 2026-10-08: all four Python checks passed locally and on the Pi, and Windows deployment checks passed on PowerShell 5.1 and 7. Deployment to `192.168.50.200` backed up and replaced the old NUT listeners with one `LISTEN 0.0.0.0 3493`. The live socket and a LAN `LIST UPS` exchange confirmed access on TCP 3493; migration preserved the UPS/SNMP configuration hashes and detector/SNMP process identities. Repeat setup and the read-only check preserved configuration hashes and service process identities, returning nonzero because live UPS readings were unavailable. SSH MCP initialization, discovery, Pi health and adapter status passed. Full deployment validation stopped because the APC USB driver could not read its device; driver failures also appear in logs from before deployment. LAN UPS queries therefore returned `ERR DRIVER-NOT-CONNECTED`, and the UPS MCP tool reported unavailable readings. Reconnect the USB data cable and rerun setup to verify live telemetry; this is separate from the successful listener migration.
 
 ### Install from the Pi shell
 
@@ -69,7 +73,7 @@ cd ups-network-adapter
 sudo bash setup.sh
 ```
 
-Alternatively, download and extract the [release archive](https://github.com/gbolotin/ups-network-adapter/releases/latest) on Windows, then copy its files from **Windows PowerShell**. Replace the local path, username, and hostname with yours. These commands also copy updates into an existing project directory:
+Alternatively, download and extract the [current main archive](https://github.com/gbolotin/ups-network-adapter/archive/refs/heads/main.zip) on Windows, then copy its files from **Windows PowerShell**. Replace the local path, username, and hostname with yours. These commands also copy updates into an existing project directory:
 
 ```powershell
 Set-Location "C:\path\to\ups-network-adapter"
@@ -116,15 +120,17 @@ sudo bash install.sh --configure-nut
 
 This installs the bridge, detector, `ups-autodetect.service`, and `ups-snmp.service`. Before changing NUT, it backs up `/etc/nut` and the SNMP configurations to a private `/root/ups-adapter-backup-...` directory and prints its path. It sets `MODE=netserver`, enables autodetection, and replaces the previous manually selected UPS sections with the managed `[ups]` selection. Do not edit the generated `/etc/nut/ups.conf`; the detector owns it.
 
-The setup preserves existing NUT listener addresses, sets `MAXAGE 6`, and enables `ALLOW_NO_DEVICE true` so the server can run when no UPS is attached. If no listener is configured, it adds loopback. A local-only setup has:
+The setup replaces all active NUT listener lines with a single wildcard listener, sets `MAXAGE 6`, and enables `ALLOW_NO_DEVICE true` so the server can run when no UPS is attached. `/etc/nut/upsd.conf` contains:
 
 ```ini
-LISTEN 127.0.0.1 3493
+LISTEN 0.0.0.0 3493
 MAXAGE 6
 ALLOW_NO_DEVICE true
 ```
 
 Keep `/etc/nut/upsd.users` without control accounts for the initial read-only setup. The bridge's `upsc` queries need no login. The setup keeps NUT configuration ownership `root:nut` and mode `0640`.
+
+On an existing installation, `sudo bash setup.sh` backs up `upsd.conf`, replaces the old loopback/fixed-IP listeners, and restarts `nut-server.service`. A listener-only migration preserves the selected USB driver and SNMP configuration and does not restart their services. Repeat runs leave the single wildcard listener unchanged. Do not add a separate loopback `LISTEN` line: the wildcard already includes `127.0.0.1`. See the [NUT listener documentation](https://networkupstools.org/historic/v2.8.1/docs/man/upsd.conf.html).
 
 This monitoring setup masks `nut-monitor.service` and generates `sdorder=-1` to leave automated shutdown disabled. It disables the enumerator's file watcher; the detector explicitly invokes the enumerator after writing a complete configuration. Do not use this setup option on a machine whose existing NUT monitoring or shutdown policy you need to retain.
 
@@ -194,24 +200,35 @@ unset COMMUNITY
 
 Repeat from the allowed manager using the Pi's LAN address. Then disconnect the APC's USB cable, connect the Eaton, and repeat using the **same endpoint**. `3` is normal mains output; `5` is battery output. Missing sensors return `noSuchInstance` or are skipped by a walk; they are not reported as zero. Numeric OIDs work without installing MIB text files. Configure UPSWarden or another RFC 1628 client with the Pi IP, port `1161`, SNMP v2c, and the community. Actual UPSWarden interoperability remains an acceptance check.
 
-## Optional NUT network clients
+## NUT network clients and Home Assistant
 
-"UPS NAT" was clarified as **NUT network access**. No IP forwarding or NAT is needed. Add the Pi's reserved LAN address to `/etc/nut/upsd.conf`, keeping the loopback listener for the bridge:
+"UPS NAT" was clarified as **NUT network access**. No IP forwarding or NAT is needed. Setup already configures `/etc/nut/upsd.conf` with:
 
 ```ini
-LISTEN 127.0.0.1 3493
-LISTEN 192.0.2.200 3493
+LISTEN 0.0.0.0 3493
 MAXAGE 6
 ALLOW_NO_DEVICE true
 ```
 
-Restrict TCP `3493` to trusted clients in your network/host firewall. Restart `nut-server`, then query from a client:
+This includes every IPv4 interface and loopback. If DHCP changes the Pi's address, **no Pi NUT reconfiguration or restart is needed**. Update clients that use the old IP, including Home Assistant and Hermes SSH arguments, or use a hostname that resolves to the new address. A DHCP reservation avoids those client changes. Restrict TCP `3493` to trusted clients in your network/host firewall. Query from a client with NUT installed:
 
 ```sh
 upsc ups@192.0.2.200
 ```
 
-NUT telemetry reads do not require authentication. For a client's `upsmon` login, add a distinct strong password and a secondary role to `/etc/nut/upsd.users`:
+In Home Assistant, add the **Network UPS Tools (NUT)** integration:
+
+| Setting | Value |
+| --- | --- |
+| Host | Pi's current IP, for example `192.168.50.200`, or a resolvable hostname |
+| Port | `3493` |
+| Username | Leave empty |
+| Password | Leave empty |
+| UPS, if prompted | `ups` |
+
+`upsadmin` and its password are SSH/Linux credentials, not NUT credentials. NUT telemetry reads do not require authentication. A connection-refused error happens before login; check `systemctl status nut-server` and `ss -ltn 'sport = :3493'` on the Pi. See the [Home Assistant NUT integration](https://www.home-assistant.io/integrations/nut/).
+
+For a client's `upsmon` login, add a distinct strong password and a secondary role to `/etc/nut/upsd.users`:
 
 ```ini
 [observer]
@@ -304,7 +321,7 @@ This is **partial, read-only UPS-MIB support**, not a claim of an RFC conformanc
 4. On a noncritical test load, briefly remove mains input to that UPS. Verify battery source `5` and alarm `2`, then restore mains and verify normal source `3`. Keep the Pi and network powered. Low-battery behavior can be tested with synthetic data; do not drain a production load to test it.
 5. Reboot with each UPS connected separately, then boot with neither attached and connect one afterwards. Verify automatic detection, driver, `upsd`, and SNMP recovery. Connect both temporarily: selection must be cleared, then recover when only one remains.
 6. Verify the correct community works only from allowed addresses and a wrong community gets no data. A SET of the harmless UPS-name object `1.1.5.0` must be rejected. Do not test writable shutdown OIDs on a live UPS.
-7. Verify your actual monitoring client tolerates the documented missing objects and handles communication loss. If NUT LAN access is enabled, verify a permitted remote `upsc` client and blocked untrusted clients.
+7. Verify your actual monitoring client tolerates the documented missing objects and handles communication loss. NUT LAN access is enabled by default; verify a permitted remote `upsc` client and any firewall rules intended to block untrusted clients.
 
 Web UI and physical display are left optional. A coordinated host/Pi shutdown policy, traps, and SNMPv3 provisioning are not included in this monitoring build; agree and test that policy before relying on the adapter to shut down equipment. To remove the installation, disable `ups-autodetect.service` and `ups-snmp.service`, stop the managed driver, and restore the backed-up NUT configuration and previous enumerator/monitor-service policy.
 
@@ -328,4 +345,4 @@ bash -n setup.sh
 git diff --check
 ```
 
-The bridge check uses synthetic inputs and verifies unit conversion, status priority, alarms, missing/invalid data, cache expiry, failed reads/recovery, the `upsc` command boundary, numeric GETNEXT ordering, SET rejection, and the real command-line entry point. The detection check verifies both driver selections, model changes, disconnects, ambiguous/failed scans, serial matching, protection of unmanaged configuration, and service sequencing. The setup check verifies repeated runs, preservation/migration of credentials, manager validation, a private SNMP query, and read-only checks. The MCP check verifies lifecycle/version negotiation, tool discovery, sensor units, fixed command boundaries, invalid requests, failed reads/recovery, message limits and the real stdio process. These are not USB or on-wire SNMP integration tests. The extension protocol follows the [Net-SNMP pass_persist documentation](https://www.net-snmp.org/wiki/index.php/Pass_persist).
+The bridge check uses synthetic inputs and verifies unit conversion, status priority, alarms, missing/invalid data, cache expiry, failed reads/recovery, the `upsc` command boundary, numeric GETNEXT ordering, SET rejection, and the real command-line entry point. The detection check verifies both driver selections, model changes, disconnects, ambiguous/failed scans, serial matching, protection of unmanaged configuration, and service sequencing. The setup check verifies repeated runs, migration from multiple NUT listeners to one wildcard with a backup and only a NUT server restart, preservation/migration of credentials, manager validation, a private SNMP query, and read-only checks. The MCP check verifies lifecycle/version negotiation, tool discovery, sensor units, fixed command boundaries, invalid requests, failed reads/recovery, message limits and the real stdio process. These are not USB or on-wire SNMP integration tests. The extension protocol follows the [Net-SNMP pass_persist documentation](https://www.net-snmp.org/wiki/index.php/Pass_persist).

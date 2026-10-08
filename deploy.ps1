@@ -3,7 +3,7 @@
 param(
     [string] $PiAddress,
     [string] $PiUser = 'upsadmin',
-    [string] $SourceRef = 'feature/mcp-server'
+    [string] $SourceRef = 'main'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -300,6 +300,8 @@ sudo bash setup.sh
             '-o', 'IdentitiesOnly=yes', '-o', 'ConnectTimeout=10', $target,
             '/usr/bin/python3', '-u', '/usr/local/lib/ups-network-adapter/ups_mcp.py')
         Test-McpConnection $ssh $mcpArguments
+        Write-Host "Home Assistant NUT: host $address, port 3493; leave username and password empty."
+        Write-Host 'NUT listens on all IPv4 interfaces; an IP change requires updating clients, not the Pi listener.'
         $command = Get-HermesCommand $ssh $mcpArguments $env:ProgramData
         $commandFile = Join-Path $env:USERPROFILE 'add-ups-to-hermes.ps1'
         [System.IO.File]::WriteAllText($commandFile, "$command`nif (`$LASTEXITCODE -ne 0) { throw 'Hermes MCP registration failed.' }`n", $utf8)

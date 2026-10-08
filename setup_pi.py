@@ -17,6 +17,7 @@ from ups_mib import build_mib, oid, read_ups
 
 PROJECT = Path(__file__).resolve().parent
 SNMP_CONFIG = Path('/etc/ups-network-adapter/ups.conf')
+NUT_SERVER_CONFIG = Path('/etc/nut/upsd.conf')
 PLACEHOLDERS = {'REPLACE_WITH_RANDOM_SECRET', 'YOUR_GENERATED_SECRET'}
 
 
@@ -68,6 +69,10 @@ def setting(content: str, pattern: str, value: str) -> str:
         return content
     lines = [line for line in content.splitlines() if not re.match(pattern, line)]
     return '\n'.join(lines).rstrip() + '\n' + value + '\n'
+
+
+def prepare_nut_listener(content: str) -> str:
+    return setting(content, r'^\s*LISTEN(?:\s|$)', 'LISTEN 0.0.0.0 3493')
 
 
 def snmp_port(content: str) -> int:
@@ -152,6 +157,7 @@ def main() -> int:
         print('Temperature:', temperature.stdout.strip(), flush=True)
 
     ready = nut_ready(Path('/etc/nut')) and all(private_config(Path('/etc/nut') / name, 'nut') for name in ('nut.conf', 'ups.conf', 'upsd.conf'))
+    listener_changed = read(NUT_SERVER_CONFIG) != prepare_nut_listener(read(NUT_SERVER_CONFIG))
     desired, secret, port = prepare_snmp(
         read(SNMP_CONFIG), [read(SNMP_CONFIG.with_name(name + '.conf')) for name in ('apc', 'eaton')],
         read(PROJECT / 'config/ups.conf'), str(args.manager) if args.manager else None,
@@ -168,6 +174,8 @@ def main() -> int:
     issues = []
     if not ready:
         issues.append('NUT configuration needs setup')
+    if listener_changed:
+        issues.append('NUT listener needs LISTEN 0.0.0.0 3493')
     if changed:
         issues.append('Installed project files need updating')
     if snmp_changed:
@@ -195,6 +203,15 @@ def main() -> int:
     else:
         if not ready or changed or not SNMP_CONFIG.exists():
             run(['/bin/bash', str(PROJECT / 'install.sh'), *([] if ready else ['--configure-nut'])])
+        # Reread after installation so a fresh setup's other NUT settings survive.
+        current_nut = read(NUT_SERVER_CONFIG)
+        desired_nut = prepare_nut_listener(current_nut)
+        listener_changed = current_nut != desired_nut
+        if listener_changed:
+            backup = Path(tempfile.mkdtemp(prefix='ups-adapter-backup-nut-', dir='/root'))
+            shutil.copy2(NUT_SERVER_CONFIG, backup / 'upsd.conf')
+            write_config(NUT_SERVER_CONFIG, desired_nut, group='nut')
+            print('NUT listener configuration backup:', backup, flush=True)
         if snmp_changed:
             backup = Path(tempfile.mkdtemp(prefix='ups-adapter-backup-snmp-', dir='/root'))
             shutil.copy2(SNMP_CONFIG, backup / 'ups.conf')
@@ -220,6 +237,8 @@ def main() -> int:
             if state('is-enabled', unit) not in {'enabled', 'static', 'indirect'}:
                 run(['/usr/bin/systemctl', 'enable', unit])
             native_repair |= state('is-active', unit) != 'active'
+        if listener_changed:
+            ensure_running('nut-server.service', restart=True)
         ensure_running('ups-autodetect.service', ready and (native_repair or bool(changed & {'ups_autodetect.py', 'ups-autodetect.service'})))
         ensure_running('ups-snmp.service', snmp_changed or bool(changed & {'ups_mib.py', 'ups-snmp.service'}))
 
@@ -250,6 +269,7 @@ def main() -> int:
     if source != expected:
         raise ValueError(f'SNMP source {source} differs from NUT source {expected}')
     print(f'SNMP local check passed on UDP {port}; output source = {source}', flush=True)
+    print('NUT listens on all IPv4 interfaces at TCP 3493 (including loopback).', flush=True)
     print('Configuration: /etc/ups-network-adapter/ups.conf (community is kept private)', flush=True)
     if not args.manager:
         print('For a new LAN manager: sudo bash setup.sh --manager MONITORING_PC_IP', flush=True)

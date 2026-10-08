@@ -7,11 +7,17 @@ import sys
 import tempfile
 from unittest.mock import patch
 
-from setup_pi import PROJECT, SNMP_CONFIG, main, nut_ready, prepare_snmp, snmp_probe
+from setup_pi import NUT_SERVER_CONFIG, PROJECT, SNMP_CONFIG, main, nut_ready, prepare_nut_listener, prepare_snmp, snmp_probe
 from ups_autodetect import MARKER
 
 
 def check() -> None:
+    legacy_nut = '# LISTEN ::1 3493\nMAXAGE 6\nALLOW_NO_DEVICE true\nLISTEN 127.0.0.1 3493\n  LISTEN 192.168.50.200 3493 # old address\n'
+    wildcard_nut = prepare_nut_listener(legacy_nut)
+    assert wildcard_nut == '# LISTEN ::1 3493\nMAXAGE 6\nALLOW_NO_DEVICE true\nLISTEN 0.0.0.0 3493\n'
+    assert prepare_nut_listener(wildcard_nut) == wildcard_nut
+    assert prepare_nut_listener(legacy_nut.replace('192.168.50.200', '192.0.2.42')) == wildcard_nut
+    assert prepare_nut_listener('') == '\nLISTEN 0.0.0.0 3493\n'
     template = (PROJECT / 'config/ups.conf').read_text()
     with patch('setup_pi.secrets.token_hex', return_value='test_secret'):
         first, secret, port = prepare_snmp('', [], template, None)
@@ -63,7 +69,7 @@ def check() -> None:
         assert snmp_probe('test_secret', 1161) == 3
 
     # Healthy repair and --check paths must not install, rewrite or restart anything.
-    files = {str(SNMP_CONFIG): first}
+    files = {str(SNMP_CONFIG): first, str(NUT_SERVER_CONFIG): wildcard_nut}
     for source, target in (
         (PROJECT / 'ups_autodetect.py', '/usr/local/lib/ups-network-adapter/ups_autodetect.py'),
         (PROJECT / 'ups_mib.py', '/usr/local/lib/ups-network-adapter/ups_mib.py'),
@@ -143,7 +149,34 @@ def check() -> None:
                 run.side_effect = install_mcp
                 assert main() == 0 and run.call_count == 1 and not write.called
             files[target] = files[str(PROJECT / 'ups_mcp.py')]
-    print('PASS: setup idempotence, credential preservation/migration, manager validation, private SNMP query and read-only checks')
+            # Existing listeners migrate without reinstalling or restarting USB/SNMP.
+            files[str(NUT_SERVER_CONFIG)] = legacy_nut
+            run.reset_mock()
+            write.reset_mock()
+            if '--check' in arguments:
+                assert main() == 1 and not run.called and not write.called
+            else:
+                def write_listener(path, content, **kwargs):
+                    assert path == NUT_SERVER_CONFIG and kwargs == {'group': 'nut'}
+                    files[str(path)] = content
+                def restart_nut(command, **kwargs):
+                    assert command == ['/usr/bin/systemctl', 'restart', 'nut-server.service']
+                    return subprocess.CompletedProcess(command, 0)
+                write.side_effect = write_listener
+                run.side_effect = restart_nut
+                with tempfile.TemporaryDirectory() as backup:
+                    stack.enter_context(patch('setup_pi.tempfile.mkdtemp', return_value=backup))
+                    copy = stack.enter_context(patch('setup_pi.shutil.copy2'))
+                    assert main() == 0
+                    copy.assert_called_once_with(NUT_SERVER_CONFIG, Path(backup) / 'upsd.conf')
+                    assert write.call_count == 1 and run.call_count == 1
+                    assert files[str(NUT_SERVER_CONFIG)] == wildcard_nut
+                    assert files[str(SNMP_CONFIG)] == first
+                    write.reset_mock()
+                    run.reset_mock()
+                    assert main() == 0 and not write.called and not run.called
+            files[str(NUT_SERVER_CONFIG)] = wildcard_nut
+    print('PASS: setup idempotence, wildcard NUT listener migration, credential preservation/migration, manager validation, private SNMP query and read-only checks')
 
 
 if __name__ == '__main__':
