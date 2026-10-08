@@ -111,15 +111,43 @@ def check() -> None:
                 raise AssertionError('Ownership failure was ignored')
             assert path.read_text() == eaton[0] and list(Path(folder).iterdir()) == [path]
 
+    def poll(scans):
+        sleeps = [None] * (len(scans) - 1) + [InterruptedError('end check')]
+        with patch('ups_autodetect.scan_usb', side_effect=scans), patch('ups_autodetect.apply_selection') as apply, patch('ups_autodetect.time.sleep', side_effect=sleeps), patch('builtins.print') as log:
+            try:
+                main()
+            except InterruptedError:
+                pass
+            return [call.args[0] for call in apply.call_args_list], [call.args[0] for call in log.call_args_list]
+
     # Unchanged polls do not interrupt telemetry; disconnect/swap does reset it.
     scans = [parse_scan(APC), parse_scan(APC), eaton, parse_scan(''), parse_scan(APC)]
-    with patch('ups_autodetect.scan_usb', side_effect=scans), patch('ups_autodetect.apply_selection') as apply, patch('ups_autodetect.time.sleep', side_effect=[None, None, None, None, InterruptedError('end check')]), patch('builtins.print'):
-        try:
-            main()
-        except InterruptedError:
-            pass
-        assert [call.args[0] for call in apply.call_args_list] == [apc, eaton[0], MARKER, apc]
-    print('PASS: single UPS detection, model switching, ambiguity/errors, matching validation and service sequencing')
+    assert poll(scans)[0] == [apc, eaton[0], MARKER, apc]
+
+    missing_serial = parse_scan(APC.replace('    serial = "SYNTHETIC_APC_001"\n', ''))
+    other_serial = parse_scan(APC.replace('SYNTHETIC_APC_001', 'SYNTHETIC_APC_002'))
+    # A readable USB node with missing optional strings must not discard a known serial.
+    applied, logs = poll([parse_scan(APC), missing_serial, missing_serial, parse_scan(APC), missing_serial, other_serial])
+    assert applied == [apc, other_serial[0]]
+    assert sum('keeping current NUT selection' in message for message in logs) == 2
+    assert any('SYNTHETIC_APC_002' in message for message in logs)
+
+    # Learning an initially unreadable serial causes no restart but detects a later change.
+    assert poll([missing_serial, parse_scan(APC), missing_serial, other_serial])[0] == [missing_serial[0], other_serial[0]]
+    assert poll([parse_scan(APC), parse_scan(APC.replace('051D', '051d'))])[0] == [apc]
+    moved = parse_scan(APC.replace('"025"', '"027"'))
+    other_bus = parse_scan(APC.replace('"001"', '"002"'))
+    other_driver = parse_scan(APC.replace('usbhid-ups', 'nutdrv_qx'))
+    assert poll([parse_scan(APC), moved, other_bus, other_driver])[0] == [apc, moved[0], other_bus[0], other_driver[0]]
+
+    # Missing serial data must not hide disconnects, ambiguous scans or scan failures.
+    ambiguous = parse_scan(APC + EATON.replace('[nutdev1]', '[nutdev2]'))
+    failed = (MARKER, (), 'USB detection failed: timeout')
+    assert poll([parse_scan(APC), missing_serial, ambiguous, missing_serial, failed, eaton])[0] == [apc, MARKER, missing_serial[0], MARKER, eaton[0]]
+    no_address = parse_scan(APC.replace('    bus = "001"\n', '').replace('    device = "025"\n', ''))
+    no_address_or_serial = parse_scan(APC.replace('    bus = "001"\n', '').replace('    device = "025"\n', '').replace('    serial = "SYNTHETIC_APC_001"\n', ''))
+    assert poll([no_address, no_address_or_serial])[0] == [no_address[0], no_address_or_serial[0]]
+    print('PASS: single UPS detection, stable identity across missing serials, model switching, ambiguity/errors, matching validation and service sequencing')
 
 
 if __name__ == '__main__':
