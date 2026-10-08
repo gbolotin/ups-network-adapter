@@ -51,6 +51,7 @@ if [[ ${1:-} == --configure-nut ]]; then
     /usr/bin/python3 - <<'PY'
 from pathlib import Path
 import re
+from setup_pi import prepare_nut_listener
 
 path = Path('/etc/nut/nut.conf')
 content = path.read_text()
@@ -62,9 +63,7 @@ for key, value in (('ALLOW_NO_DEVICE', 'true'), ('MAXAGE', '6')):
     content, count = re.subn(r'^\s*' + key + r'\s+.*$', key + ' ' + value, content, flags=re.MULTILINE)
     if not count:
         content += '\n' + key + ' ' + value + '\n'
-if not re.search(r'^\s*LISTEN\s+(127\.0\.0\.1|0\.0\.0\.0|\*)(\s+3493)?\s*(#.*)?$', content, flags=re.MULTILINE):
-    content += '\nLISTEN 127.0.0.1 3493\n'
-path.write_text(content)
+path.write_text(prepare_nut_listener(content))
 Path('/etc/nut/ups.conf').write_text('# Managed by ups-network-adapter autodetection.\n')
 PY
     chown root:nut /etc/nut/nut.conf /etc/nut/ups.conf /etc/nut/upsd.conf

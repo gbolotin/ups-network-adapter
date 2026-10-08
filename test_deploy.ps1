@@ -12,6 +12,7 @@ function Assert-Throws([scriptblock] $Action) {
     Assert $failed 'Expected validation to reject the input.'
 }
 
+Assert ($SourceRef -eq 'main') 'Standalone deployment must use main by default.'
 Assert ((Confirm-PiAddress '192.168.50.200' 'upsadmin') -eq '192.168.50.200') 'Valid Pi address rejected.'
 foreach ($address in @('-oProxyCommand=x', '127.1', '256.1.2.3', '::1', '192.168.1.1;whoami')) {
     Assert-Throws { Confirm-PiAddress $address 'upsadmin' }
