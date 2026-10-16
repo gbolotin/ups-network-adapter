@@ -387,6 +387,13 @@ The website includes a dedicated **User & Password** page (`/account`):
 - Change administrator username and password.
 - Optionally synchronize PeaNUT's admin password (port 8080) and the local kiosk login in one click.
 
+### System Maintenance
+
+The website includes a dedicated **Maintenance** page (`/maintenance`):
+- **Restart System**: Safely reboots the Raspberry Pi. The SNMP daemon, PeaNUT dashboard, and configuration web interface restart automatically in approximately 30–60 seconds.
+- **Shutdown System**: Safely shuts down the operating system and stops internal storage writes before disconnecting power to protect against SD card corruption.
+- Protected by authentication, CSRF tokens, and confirmation prompts to prevent accidental triggers.
+
 ### Configure SNMP
 
 Available on the **SNMP Settings** tab (`/`):

@@ -49,7 +49,7 @@ try {
         Assert ($archive.Entries.Count -eq $projectFiles.Count) 'Deployment manifest incomplete.'
         Assert ($null -ne $archive.GetEntry('install_peanut.py')) 'PeaNUT installer missing from deployment.'
         Assert ($null -ne $archive.GetEntry('test_install_peanut.py')) 'PeaNUT check missing from deployment.'
-        foreach ($name in @('ups_web.py', 'ups_web.html', 'ups_account.html', 'install_web.py', 'test_ups_web.py', 'test_install_web.py', 'config/ups-web.service')) {
+        foreach ($name in @('ups_web.py', 'ups_web.html', 'ups_account.html', 'ups_maintenance.html', 'install_web.py', 'test_ups_web.py', 'test_install_web.py', 'config/ups-web.service')) {
             Assert ($null -ne $archive.GetEntry($name)) "Settings site file missing: $name"
         }
         foreach ($name in $projectFiles) {

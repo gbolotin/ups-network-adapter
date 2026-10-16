@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Maintenance - UPS Adapter</title>
+<style>
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; background: light-dark(#f3f5f8, #15181d); color: light-dark(#18202c, #eef2f8); }
+main { max-width: 720px; margin: 40px auto; padding: 0 20px 40px; }
+h1 { margin-bottom: 8px; font-size: 2rem; } p { line-height: 1.6; }
+fieldset { margin: 24px 0; padding: 24px; border: 1px solid light-dark(#ccd4df, #455062); border-radius: 12px; background: light-dark(white, #20262f); }
+legend { font-weight: 650; padding: 0 8px; }
+button { padding: 12px 24px; border: 0; border-radius: 6px; background: #2359b8; color: white; font: inherit; font-weight: 650; cursor: pointer; }
+button.danger-btn { background: #b82323; }
+button.danger-btn:hover { background: #961b1b; }
+button:hover { filter: brightness(1.1); }
+:focus-visible { outline: 3px solid #638fe2; outline-offset: 3px; }
+.warn-box { padding: 14px 18px; margin: 16px 0; border-left: 4px solid #e07000; background: light-dark(#fff4e5, #2d2215); border-radius: 4px; font-size: 0.95rem; line-height: 1.5; }
+.nav { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid light-dark(#ccd4df, #455062); padding-bottom: 16px; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.brand { font-size: 1.25rem; font-weight: 700; color: #2359b8; }
+.nav-links { display: flex; gap: 8px; align-items: center; }
+.nav-links a { text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; color: inherit; border: 1px solid transparent; }
+.nav-links a:hover { background: light-dark(#e5edfc, #25344f); }
+.nav-links a.active { background: #2359b8; color: white; }
+.nav-links a.nav-external { border: 1px solid light-dark(#ccd4df, #455062); }
+small { display: block; margin-top: 6px; color: light-dark(#556070, #a0aec0); }
+@media (max-width: 480px) { main { margin-top: 24px; } fieldset { padding: 16px; } }
+</style>
+</head>
+<body>
+<main>
+<nav class="nav">
+<div class="brand">UPS Network Adapter</div>
+<div class="nav-links">
+<a href="/account">User &amp; Password</a>
+<a href="/">SNMP Settings</a>
+<a href="/maintenance" class="active">Maintenance</a>
+<a href="http://{{host}}:8080/device/ups" target="_blank" class="nav-external">PeaNUT Dashboard ↗</a>
+</div>
+</nav>
+
+<h1>System Maintenance</h1>
+<p>Perform system power operations on the UPS network adapter.</p>
+
+<fieldset>
+<legend>Restart System</legend>
+<p>Safely reboot the Raspberry Pi. The SNMP daemon, PeaNUT dashboard, and configuration web interface will restart automatically once the device boots up.</p>
+<small>Estimated downtime: 30–60 seconds.</small>
+<form method="post" action="/maintenance" onsubmit="return confirm('Are you sure you want to restart the UPS network adapter?');" style="margin-top: 20px;">
+<input type="hidden" name="csrf" value="{{csrf}}">
+<input type="hidden" name="action" value="restart">
+<button type="submit">Restart System</button>
+</form>
+</fieldset>
+
+<fieldset>
+<legend>Shutdown System</legend>
+<p>Safely shut down the operating system and stop all services to prevent SD card corruption before disconnecting power.</p>
+<div class="warn-box">
+<strong>Notice:</strong> Once shut down, the adapter cannot be turned on remotely over the network. You will need to physically disconnect and reconnect the power cable to power it back on.
+</div>
+<form method="post" action="/maintenance" onsubmit="return confirm('Are you sure you want to shut down the UPS network adapter?\n\nTo turn it back on, you will need to physically disconnect and reconnect the power cable.');" style="margin-top: 20px;">
+<input type="hidden" name="csrf" value="{{csrf}}">
+<input type="hidden" name="action" value="shutdown">
+<button type="submit" class="danger-btn">Shutdown System</button>
+</form>
+</fieldset>
+</main>
+</body>
+</html>

@@ -16,6 +16,7 @@ import shutil
 import ssl
 import subprocess
 import tempfile
+import threading
 from urllib.parse import parse_qs
 
 from ups_autodetect import write_config
@@ -245,6 +246,25 @@ def save_credentials(form: dict[str, str], current_credentials: dict[str, str]) 
     return updated
 
 
+def execute_system_action(action: str) -> None:
+    systemctl = shutil.which('systemctl') or '/usr/bin/systemctl'
+    if action in ('restart', 'reboot'):
+        command = [systemctl, 'reboot']
+    elif action in ('shutdown', 'poweroff'):
+        command = [systemctl, 'poweroff']
+    else:
+        raise ValueError('Unsupported maintenance action.')
+    subprocess.run(command, check=False)
+
+
+def schedule_system_action(action: str, delay: float = 1.0) -> None:
+    if action not in ('restart', 'reboot', 'shutdown', 'poweroff'):
+        raise ValueError('Unsupported maintenance action.')
+    timer = threading.Timer(delay, execute_system_action, args=(action,))
+    timer.daemon = True
+    timer.start()
+
+
 class SettingsHandler(BaseHTTPRequestHandler):
     timeout = 10
 
@@ -312,13 +332,21 @@ class SettingsHandler(BaseHTTPRequestHandler):
             }
             page = Path(__file__).with_name('ups_account.html').read_text(encoding='utf-8')
             self.respond(200, re.sub(r'\{\{(\w+)\}\}', lambda match: escape(values.get(match[1], ''), quote=True), page))
+        elif self.path in ('/maintenance', '/system'):
+            values = {
+                'csrf': self.server.csrf,
+                'host': host,
+                'username': escape(self.server.credentials.get('username', 'admin')),
+            }
+            page = Path(__file__).with_name('ups_maintenance.html').read_text(encoding='utf-8')
+            self.respond(200, re.sub(r'\{\{(\w+)\}\}', lambda match: escape(values.get(match[1], ''), quote=True), page))
         else:
             self.respond(404, 'Page not found.')
 
     def do_POST(self) -> None:
         if not self.authorized():
             return
-        if self.path not in ('/', '/settings', '/account', '/users', '/password'):
+        if self.path not in ('/', '/settings', '/account', '/users', '/password', '/maintenance', '/system'):
             self.respond(404, 'Page not found.')
             return
         if self.headers.get('Content-Type') != 'application/x-www-form-urlencoded' or self.headers.get('Transfer-Encoding'):
@@ -339,7 +367,46 @@ class SettingsHandler(BaseHTTPRequestHandler):
                 self.respond(403, 'Invalid form token. Reload settings before saving.')
                 return
 
-            if self.path in ('/account', '/users', '/password'):
+            if self.path in ('/maintenance', '/system'):
+                action = form.get('action', '').strip().lower()
+                if action in ('restart', 'reboot'):
+                    schedule_system_action('restart')
+                    body = (
+                        '<!doctype html><html><head><meta charset="utf-8">'
+                        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+                        '<title>Restarting - UPS Adapter</title>'
+                        '<meta http-equiv="refresh" content="45; url=/">'
+                        '<style>:root { color-scheme: light dark; font-family: system-ui, sans-serif; }'
+                        'body { margin: 40px auto; max-width: 600px; padding: 20px; text-align: center; background: light-dark(#f3f5f8, #15181d); color: light-dark(#18202c, #eef2f8); }'
+                        '.box { padding: 32px; border: 1px solid light-dark(#ccd4df, #455062); border-radius: 12px; background: light-dark(white, #20262f); }'
+                        'h1 { color: #2359b8; margin-top: 0; } a { color: #2359b8; font-weight: 600; text-decoration: none; }</style></head>'
+                        '<body><div class="box"><h1>Restarting System…</h1>'
+                        '<p>The UPS network adapter is rebooting now. Services will be unavailable for approximately 30–60 seconds.</p>'
+                        '<p>This page will automatically attempt to reconnect in 45 seconds.</p>'
+                        '<p><a href="/">Return to Home</a></p></div></body></html>'
+                    )
+                    self.respond(200, body)
+                elif action in ('shutdown', 'poweroff'):
+                    schedule_system_action('shutdown')
+                    body = (
+                        '<!doctype html><html><head><meta charset="utf-8">'
+                        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+                        '<title>Shutting Down - UPS Adapter</title>'
+                        '<style>:root { color-scheme: light dark; font-family: system-ui, sans-serif; }'
+                        'body { margin: 40px auto; max-width: 600px; padding: 20px; text-align: center; background: light-dark(#f3f5f8, #15181d); color: light-dark(#18202c, #eef2f8); }'
+                        '.box { padding: 32px; border: 1px solid light-dark(#ccd4df, #455062); border-radius: 12px; background: light-dark(white, #20262f); }'
+                        'h1 { color: #b82323; margin-top: 0; }'
+                        '.alert { margin-top: 20px; padding: 14px; text-align: left; background: light-dark(#fff4e5, #2d2215); border-left: 4px solid #e07000; border-radius: 4px; font-size: 0.95rem; line-height: 1.5; }'
+                        '</style></head>'
+                        '<body><div class="box"><h1>System Shutting Down</h1>'
+                        '<p>The UPS network adapter is safely halting and turning off system storage to protect the SD card.</p>'
+                        '<div class="alert"><strong>Powering back on:</strong> Once the activity LED turns off or remains solid, it is safe to disconnect power. To restart the adapter, physically reconnect the power supply.</div>'
+                        '</div></body></html>'
+                    )
+                    self.respond(200, body)
+                else:
+                    raise ValueError('Unknown maintenance action requested.')
+            elif self.path in ('/account', '/users', '/password'):
                 new_creds = save_credentials(form, self.server.credentials)
                 self.server.update_auth(new_creds)
                 self.respond(200, f'<p>Credentials updated successfully for user <strong>{escape(new_creds["username"])}</strong>.</p><p><a href="/account">Back to User &amp; Password</a> | <a href="/">Go to SNMP Settings</a></p>')
@@ -347,7 +414,12 @@ class SettingsHandler(BaseHTTPRequestHandler):
                 changed = save(form)
                 self.respond(200, '<p>' + ('Settings saved. SNMP restarted.' if changed else 'Settings already match.') + '</p><a href="/">Back to settings</a>')
         except (ValueError, UnicodeError) as error:
-            back_url = '/account' if self.path in ('/account', '/users', '/password') else '/'
+            if self.path in ('/maintenance', '/system'):
+                back_url = '/maintenance'
+            elif self.path in ('/account', '/users', '/password'):
+                back_url = '/account'
+            else:
+                back_url = '/'
             self.respond(400, f'<p>{escape(str(error))}</p><a href="{back_url}">Reload settings</a>')
         except RuntimeError as error:
             self.respond(503, escape(str(error)))

@@ -47,7 +47,7 @@ def install(password: str | None = None) -> None:
         raise ValueError('OpenSSL is required for the HTTPS certificate. Install it before retrying.')
     targets = [CONFIG, CONFIG.parent, STATE, CREDENTIALS, LIBRARY, UNIT]
     targets += [STATE / name for name in ('certificate.pem', 'key.pem')]
-    targets += [LIBRARY / name for name in ('ups_web.py', 'ups_web.html', 'ups_account.html')]
+    targets += [LIBRARY / name for name in ('ups_web.py', 'ups_web.html', 'ups_account.html', 'ups_maintenance.html')]
     if any(path.is_symlink() for path in targets):
         raise ValueError('Refusing to modify symlinked web configuration or installation files')
     settings(CONFIG.read_text(encoding='utf-8'))
@@ -101,7 +101,7 @@ def install(password: str | None = None) -> None:
         if (STATE / name).is_file():
             (STATE / name).chmod(0o600)
             os.chown(STATE / name, 0, 0)
-    for source, target in [(PROJECT / name, LIBRARY / name) for name in ('ups_web.py', 'ups_web.html', 'ups_account.html')] + [(PROJECT / 'config/ups-web.service', UNIT)]:
+    for source, target in [(PROJECT / name, LIBRARY / name) for name in ('ups_web.py', 'ups_web.html', 'ups_account.html', 'ups_maintenance.html')] + [(PROJECT / 'config/ups-web.service', UNIT)]:
         if not target.exists() or source.read_bytes() != target.read_bytes():
             # Atomic replacement keeps a running site from reading a partially copied page.
             descriptor, name = tempfile.mkstemp(dir=target.parent)

@@ -15,7 +15,7 @@ $projectFiles = @(
     'install.sh', 'setup.sh', 'setup_pi.py', 'ups_mib.py', 'ups_autodetect.py', 'ups_mcp.py',
     'config/ups.conf', 'config/ups-autodetect.service', 'config/ups-snmp.service',
     'test_ups_mib.py', 'test_ups_autodetect.py', 'test_setup_pi.py', 'test_ups_mcp.py',
-    'install_peanut.py', 'test_install_peanut.py', 'ups_web.py', 'ups_web.html', 'ups_account.html',
+    'install_peanut.py', 'test_install_peanut.py', 'ups_web.py', 'ups_web.html', 'ups_account.html', 'ups_maintenance.html',
     'install_web.py', 'test_ups_web.py', 'test_install_web.py', 'config/ups-web.service', 'README.md'
 )
 $utf8 = New-Object System.Text.UTF8Encoding($false)

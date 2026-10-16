@@ -171,6 +171,43 @@ def main():
                     # New auth should succeed
                     new_auth = 'Basic ' + base64.b64encode(b'newadmin:new-password-123').decode()
                     assert request(extra={'Authorization': new_auth})[0] == 200
+
+                # Test /maintenance page
+                status, maint_page, _ = request(path='/maintenance', extra={'Authorization': new_auth})
+                assert status == 200 and 'System Maintenance' in maint_page
+                assert 'Restart System' in maint_page and 'Shutdown System' in maint_page
+                maint_token = re.search(r'name="csrf" value="([^"]+)"', maint_page)[1]
+
+                # Bad CSRF on /maintenance
+                bad_csrf = {'csrf': 'wrong-token', 'action': 'restart'}
+                assert request('POST', path='/maintenance', body=urlencode(bad_csrf), extra={'Authorization': new_auth})[0] == 403
+
+                # Unknown action
+                bad_act = {'csrf': maint_token, 'action': 'unknown'}
+                assert request('POST', path='/maintenance', body=urlencode(bad_act), extra={'Authorization': new_auth})[0] == 400
+
+                # Restart action
+                with patch.object(web, 'schedule_system_action') as mock_action:
+                    restart_req = {'csrf': maint_token, 'action': 'restart'}
+                    r_status, r_body, _ = request('POST', path='/maintenance', body=urlencode(restart_req), extra={'Authorization': new_auth})
+                    assert r_status == 200 and 'Restarting System' in r_body
+                    mock_action.assert_called_once_with('restart')
+
+                # Shutdown action
+                with patch.object(web, 'schedule_system_action') as mock_action:
+                    shutdown_req = {'csrf': maint_token, 'action': 'shutdown'}
+                    s_status, s_body, _ = request('POST', path='/maintenance', body=urlencode(shutdown_req), extra={'Authorization': new_auth})
+                    assert s_status == 200 and 'System Shutting Down' in s_body
+                    mock_action.assert_called_once_with('shutdown')
+
+                # Direct execute_system_action test
+                with patch.object(subprocess, 'run') as mock_run:
+                    web.execute_system_action('restart')
+                    assert any('reboot' in arg for arg in mock_run.call_args[0][0])
+                    web.execute_system_action('shutdown')
+                    assert any('poweroff' in arg for arg in mock_run.call_args[0][0])
+                rejected(lambda: web.execute_system_action('invalid_action'))
+                rejected(lambda: web.schedule_system_action('invalid_action'))
             finally:
                 server.shutdown()
                 server.server_close()
