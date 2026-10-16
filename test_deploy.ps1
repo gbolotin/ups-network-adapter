@@ -39,6 +39,11 @@ try {
     $source = [System.IO.Compression.ZipFile]::Open($sourceArchive, [System.IO.Compression.ZipArchiveMode]::Create)
     try {
         Assert ($archive.Entries.Count -eq $projectFiles.Count) 'Deployment manifest incomplete.'
+        Assert ($null -ne $archive.GetEntry('install_peanut.py')) 'PeaNUT installer missing from deployment.'
+        Assert ($null -ne $archive.GetEntry('test_install_peanut.py')) 'PeaNUT check missing from deployment.'
+        foreach ($name in @('ups_web.py', 'ups_web.html', 'install_web.py', 'test_ups_web.py', 'test_install_web.py', 'config/ups-web.service')) {
+            Assert ($null -ne $archive.GetEntry($name)) "Settings site file missing: $name"
+        }
         foreach ($name in $projectFiles) {
             $entry = $archive.GetEntry($name)
             Assert ($null -ne $entry) "Deployment file missing: $name"
@@ -107,7 +112,9 @@ try {
         }
         function New-McpKey { return 'ssh-ed25519 dGVzdA== ups-adapter-mcp' }
         function Test-McpConnection { }
-        foreach ($manager in @('', '192.0.2.20')) {
+        foreach ($scenario in @(@('', $false), @('192.0.2.20', $false), @('', $true), @('192.0.2.20', $true))) {
+            $manager = $scenario[0]
+            $WithPeaNut = [bool] $scenario[1]
             $ManagerAddress = $manager
             $deploymentOutput = (& { Invoke-Deployment } *>&1 | Out-String)
             Assert ($deploymentOutput.Contains('default UDP 161')) 'Deployment omits the SNMP default port.'
@@ -117,8 +124,17 @@ try {
                 Assert ($deploymentOutput.Contains('Fresh SNMP defaults allow every reachable IPv4 client')) 'Deployment must warn about broad public access.'
             }
             $expectedSetup = Get-SetupCommand $manager
+            Assert ($installationBody.Contains('sudo python3 install_web.py')) 'Deployment must install settings.'
+            Assert ($installationBody.IndexOf($expectedSetup) -lt $installationBody.IndexOf('sudo python3 install_web.py')) 'Settings must install after SNMP setup.'
+            Assert ($deploymentOutput.Contains('https://192.0.2.200:8081')) 'Deployment omits the settings URL.'
             Assert ($installationBody -match ('(?m)^' + [regex]::Escape($expectedSetup) + '\r?$')) 'Remote deployment did not use the validated setup command.'
             Assert (-not $installationBody.Contains('__SETUP_COMMAND__')) 'Deployment left an unresolved command placeholder.'
+            Assert (-not $installationBody.Contains('__PEANUT_COMMAND__')) 'Deployment left an unresolved PeaNUT placeholder.'
+            Assert ($installationBody.Contains('sudo python3 install_peanut.py') -eq [bool] $WithPeaNut) 'PeaNUT must install only when requested.'
+            if ($WithPeaNut) {
+                Assert ($deploymentOutput.Contains('http://192.0.2.200:8080')) 'Deployment omits the PeaNUT URL.'
+                Assert ($installationBody.IndexOf($expectedSetup) -lt $installationBody.IndexOf('sudo python3 install_peanut.py')) 'PeaNUT must install after NUT setup.'
+            }
         }
     } finally {
         $env:USERPROFILE = $previousHome
@@ -128,7 +144,7 @@ try {
         }
         Remove-Item -LiteralPath $deploymentHome
     }
-    Write-Host 'Deployment checks passed: Pi/manager validation, public UDP161 packaging, default/restricted orchestration, standalone download, key reuse and Hermes command quoting.'
+    Write-Host 'Deployment checks passed: Pi/manager validation, public UDP161 and PeaNUT packaging, optional PeaNUT installation, default/restricted orchestration, standalone download, key reuse and Hermes command quoting.'
 } finally {
     # Delete only the individual temporary files created by this check.
     foreach ($path in @($archivePath, $sourceArchive, $downloadArchive, $keyPath, "$keyPath.pub")) {

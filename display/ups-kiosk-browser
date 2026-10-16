@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+# Wait for PeaNUT before opening Chromium so boot does not leave an error page.
+until curl --fail --silent --max-time 3 http://127.0.0.1:8080/api/ping >/dev/null; do
+    sleep 2
+done
+
+exec /usr/bin/chromium \
+    --ozone-platform=wayland \
+    --kiosk \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-session-crashed-bubble \
+    --overscroll-history-navigation=0 \
+    --password-store=basic \
+    --user-data-dir=/var/lib/ups-kiosk/chromium \
+    --remote-debugging-address=127.0.0.1 \
+    --remote-debugging-port=9222 \
+    http://127.0.0.1:8080/device/ups

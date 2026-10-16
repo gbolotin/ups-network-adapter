@@ -19,11 +19,17 @@ Use a Raspberry Pi 4, microSD card with Raspberry Pi OS Lite 64-bit, an appropri
 | APC Back-UPS BX750MI, 750 VA / 410 W | `usbhid-ups`, USB `051d:0002` | Live NUT reads verified. Confirm disconnect/reconnect and battery transitions. |
 | Eaton 5E 2200i | Usually `nutdrv_qx` | Check the full model label and USB IDs. NUT lists **5E2200** under Qx; smaller 5E HID models are not evidence that this unit uses HID. |
 
-The detector runs [nut-scanner](https://networkupstools.org/historic/v2.8.1/docs/man/nut-scanner.html) every ten seconds. It accepts exactly one scan entry using `usbhid-ups` or `nutdrv_qx`, and generates `/etc/nut/ups.conf` with section `[ups]`, its USB vendor/product IDs, and a literal serial match when available. It does not pin a physical USB port. The installed NUT scanner selects the driver from its USB compatibility database; the driver supplies the actual model and measurements. Detection by USB ID is not proof of compatibility with every model using those IDs. The expected drivers follow the [NUT hardware compatibility list](https://networkupstools.org/stable-hcl.html).
+The detector checks cached kernel USB topology every ten seconds. It runs [nut-scanner](https://networkupstools.org/historic/v2.8.1/docs/man/nut-scanner.html) at startup, after a topology change, or while no successful selection exists. Unchanged selected hardware does not receive repeated scanner descriptor requests. Unavailable sysfs falls back to active scanning. Any added or removed USB device forces re-evaluation, including a second UPS. It accepts exactly one scan entry using `usbhid-ups` or `nutdrv_qx`, and generates `/etc/nut/ups.conf` with section `[ups]`, its USB vendor/product IDs, and a literal serial match when available. It does not pin a physical USB port. The installed NUT scanner selects the driver from its USB compatibility database; the driver supplies the actual model and measurements. Detection by USB ID is not proof of compatibility with every model using those IDs. The expected drivers follow the [NUT hardware compatibility list](https://networkupstools.org/stable-hcl.html).
+
+For a scanner-identified APC Back-UPS BX750MI (`051d:0002`, `usbhid-ups`), generated configuration includes `pollonly` and `pollinterval = 2`. Status polling was restored from ten seconds to its original two-second interval on 15 October 2026. The compatibility mitigation still disables USB interrupt transfers; full sensor polling keeps NUT's thirty-second default. Other models retain their defaults. [NUT documents these options](https://networkupstools.org/docs/man/usbhid-ups.html) for USB compatibility and repeated timeouts. This does not establish the trigger or prove that the recurring fault is eliminated. See the [2026-10-10 diagnosis](docs/apc-usb-diagnosis-2026-10-10.md).
+
+Optional [seven-day stability logging](diagnostics/README.md) records health samples and a bounded APC USB trace, freezes the trace on the first failed NUT reading, and preserves driver/kernel journals across reboots. Healthy service PID changes remain recorded events without stopping capture. It performs no automatic recovery and is separate from normal setup. See the [trace overhead and deployment report](docs/ups-stability-logging-2026-10-10.md) and the [14 October recurrence and correction](docs/apc-usb-recurrence-2026-10-14.md).
+
+An optional [NUT USB driver 2.8.5 comparison](docs/nut-2.8.5-controlled-test-2026-10-15.md) was activated on the current Pi on 15 October. It keeps the packaged server/client at 2.8.1 and the two-second polling settings unchanged. Its separate seven-day capture ends on 22 October at 08:35 Asia/Jerusalem. This experiment is not part of normal setup; long-duration stability remains unverified.
 
 On a changed selection, the detector stops the old driver, updates the configuration, invokes NUT's driver enumerator, and resets the SNMP bridge cache. No UPS, multiple detected UPSs, an unsupported driver, or a failed scan clears the selection. SNMP then reports unknown states and a communication-lost alarm instead of retaining previous measurements. Changes can take ten seconds to be discovered, plus scanning and driver startup time. USB scanning reads descriptors rather than starting another UPS driver. Normal operation does not require manual driver selection.
 
-A temporarily unreadable serial number on the same USB bus/device address does not change the selection or restart NUT/SNMP. The detector retains any previously observed serial in memory and keeps the installed driver configuration unchanged. If the first scan has no serial, a later readable serial is learned without a restart; that scan does not add a serial filter to the installed configuration. A different known serial, USB address, driver, or vendor/product ID still triggers reselection. Disconnects, ambiguous devices and failed scans still clear the selection. Actual selection changes and missing-serial retention are logged in `journalctl -u ups-autodetect`; NUT driver/server logs are available with `journalctl -u nut-driver@ups -u nut-server`.
+A temporarily unreadable serial number on the same USB bus/device address does not change the selection or restart NUT/SNMP. The detector retains any previously observed serial in memory and keeps the installed driver configuration unchanged. If the first scan has no serial, a later active scan can learn a readable serial without a restart; that scan does not add a serial filter to the installed configuration. A different known serial, USB address, driver, or vendor/product ID reported by an active scan still triggers reselection. Disconnects, ambiguous devices and failed scans still clear the selection. Actual selection changes and missing-serial retention are logged in `journalctl -u ups-autodetect`; NUT driver/server logs are available with `journalctl -u nut-driver@ups -u nut-server`.
 
 Verified on 2026-10-08: regression checks exercise serial loss/restoration, learning a previously unreadable serial, different known serials, USB addresses and drivers, and ambiguous/failed scans. The serial-loss regression fails against the previous detector. All four Python checks passed locally and on the Pi at `192.168.50.200`; the updated runtime was installed there. During 30 seconds of repeated live scans with unavailable serial data, detector/NUT server/SNMP process identities and configuration hashes remained unchanged. The separate APC USB descriptor timeouts still prevent live UPS readings; this test confirms stable autodetection, not recovery of USB communication.
 
@@ -62,6 +68,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -PiAddress 192.
 ```
 
 `-ManagerAddress` is optional and forwards `--manager` to setup. Without it, fresh installs use public access; existing restricted ACLs remain restricted.
+
+Deployment also installs the [adapter settings website](#adapter-settings-website) at **`https://PI_ADDRESS:8081`**. It uses separate credentials from SSH and PeaNUT. The installer requires the Pi's existing `openssl` command and installs no extra Python packages.
+
+To include the optional PeaNUT web dashboard, add `-WithPeaNut`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -PiAddress 192.168.50.200 -WithPeaNut
+```
+
+This installs Docker from Debian packages if needed, then installs and checks PeaNUT after NUT setup. You can combine `-WithPeaNut` with `-ManagerAddress`. Without `-WithPeaNut`, deployment does not install Docker or PeaNUT. See [PeaNUT web dashboard](#peanut-web-dashboard) for the login and an installation that changes only the dashboard.
 
 Enter the Pi password at the SSH prompts and again if `sudo` asks. On a first connection, verify the displayed host fingerprint against the Pi before accepting it. The script copies the shell/Python/configuration/test files with Linux newlines, backs up any existing Pi project in its home directory, runs the checks and `sudo bash setup.sh`, and then verifies the MCP tools over SSH. Setup configures one automatically detected USB UPS and replaces all active NUT `LISTEN` lines with **`LISTEN 0.0.0.0 3493`** on both new and existing installations. NUT accepts IPv4 connections on all interfaces, including loopback, for Home Assistant and other NUT clients. Setup preserves existing SNMP communities and ACLs, migrates the former default UDP `1161` to `161`, and disables the standard `snmpd.service`. Fresh SNMP installations listen on all IPv4 interfaces at UDP `161` with read-only community `public` for any source. Other custom ports are preserved. Automated shutdown remains disabled.
 
@@ -346,7 +362,120 @@ This is **partial, read-only UPS-MIB support**, not a claim of an RFC conformanc
 6. Verify the correct community works only from allowed addresses and a wrong community gets no data. A SET of the harmless UPS-name object `1.1.5.0` must be rejected. Do not test writable shutdown OIDs on a live UPS.
 7. Verify your actual monitoring client tolerates the documented missing objects and handles communication loss. NUT LAN access is enabled by default; verify a permitted remote `upsc` client and any firewall rules intended to block untrusted clients.
 
-Web UI and physical display are left optional. A coordinated host/Pi shutdown policy, traps, and SNMPv3 provisioning are not included in this monitoring build; agree and test that policy before relying on the adapter to shut down equipment. To remove the installation, disable `ups-autodetect.service` and `ups-snmp.service`, stop the managed driver, and restore the backed-up NUT configuration and previous enumerator/monitor-service policy.
+PeaNUT and a physical display are optional. A coordinated host/Pi shutdown policy, traps, and SNMPv3 provisioning are not included in this monitoring build; agree and test that policy before relying on the adapter to shut down equipment. To remove the adapter installation, disable `ups-autodetect.service` and `ups-snmp.service`, stop the managed driver, and restore the backed-up NUT configuration and previous enumerator/monitor-service policy.
+
+## Adapter settings website
+
+Every `deploy.ps1` run installs and checks a separate settings website on **HTTPS port 8081**. PeaNUT remains on HTTP port 8080. No PeaNUT source changes or reverse proxy are needed.
+
+```text
+Browser -- HTTPS :8081 --> Adapter settings --> SNMP configuration
+Browser -- HTTP  :8080 --> PeaNUT dashboard --> NUT --> USB UPS
+```
+
+### Open and sign in
+
+1. Open `https://192.168.50.200:8081`, replacing the address with your Pi's address.
+2. Verify the self-signed certificate fingerprint before accepting the browser's certificate warning.
+3. On the Pi over SSH, run `sudo cat /etc/ups-web-credentials.json`.
+4. Sign in with that file's `username` and `password`. The browser uses HTTP Basic authentication over TLS.
+
+Show the expected SHA-256 certificate fingerprint from the **Pi shell**:
+
+```bash
+sudo openssl x509 -in /var/lib/ups-web/certificate.pem -noout -fingerprint -sha256
+```
+
+The initial username is `admin`; installation generates a random password before starting the service. Credentials, the TLS private key, and backups are root-only. Repeat installation preserves credentials and the certificate. Browser authentication usually remains cached until you close the browser session; use a private window on shared computers. The self-signed certificate expires after ten years.
+
+### Configure SNMP
+
+| Setting | Behavior |
+| --- | --- |
+| Name, location, contact | Sets `sysName`, `sysLocation`, and `sysContact`; up to 128 printable characters (255 UTF-8 bytes). Name is required. Blank location or contact uses the Net-SNMP default. |
+| Read community | Leave blank to retain the existing value. Current secrets are never returned to the browser. |
+| Allowed IPv4 clients | Comma-separated IPv4 addresses or CIDR networks. `default` allows all reachable clients. Loopback read access remains enabled for local checks. |
+| Enable system write access | Disabled initially. Enabling requires a separate write community and allowed IPv4 clients. Unchecking removes the write community rules. |
+| Write community | Leave blank to retain an existing value. Must differ from the read community. |
+
+Communities accept 1–255 letters, digits, underscores, dots, or hyphens. Identity fields cannot contain `#`, double quotes, or backslashes. Custom multi-community, IPv6-community, or advanced access rules are preserved; the site refuses to edit configurations it cannot safely represent.
+
+**Write scope:** the write community is restricted to `.1.3.6.1.2.1.1` (the system-information subtree). This only grants access where Net-SNMP permits writing; it does not make read-only objects writable. Name, location, and contact configured in `ups.conf` return `notWritable` to SNMP SET requests, so edit them through this website. The UPS-MIB bridge continues rejecting every SET, including shutdown and test commands. See [Net-SNMP system information and access control](https://www.net-snmp.org/docs/man/snmpd.conf.html).
+
+Saving validates the submitted fields, rejects stale forms, creates a private `/var/lib/ups-web/backup-*/ups.conf` backup, and atomically replaces `/etc/ups-network-adapter/ups.conf`. It then restarts only `ups-snmp.service` and checks that it is active. If restart fails, it restores the previous configuration and attempts another restart. A failed recovery is reported on the page. Backups are retained until an administrator removes them. Save success confirms service activation; it is not an on-wire SNMP acceptance test.
+
+Setup now preserves custom `sysName` values. Later deployment preserves the saved identity, communities, and ACLs. Explicit `--manager` / `-ManagerAddress` replaces **read-community** client rules; separately configured write-community rules remain unchanged.
+
+Keep TCP 8081 and SNMP on a trusted management network with appropriate firewall restrictions. HTTPS encrypts the settings website; SNMP v1/v2c still sends communities unencrypted. The service runs as root to own the SNMP configuration and restart its fixed service. Systemd restricts writable paths to the SNMP configuration directory and web state directory. It provides no arbitrary file editor or command execution endpoint.
+
+### Install only the settings website
+
+First copy the current project to the Pi. From the **Pi shell**, in that copied project directory, after normal adapter setup:
+
+```bash
+cd ~/ups-network-adapter
+python3 test_ups_web.py
+python3 test_install_web.py
+sudo python3 install_web.py
+```
+
+The installer requires an existing adapter installation and `openssl`; it does not install packages or change NUT/SNMP settings. It installs the service, creates credentials and a self-signed certificate if absent, enables boot startup, and performs an authenticated local HTTPS check. A repeat run starts a stopped site; changed website files trigger a restart.
+
+Inspect or remove the site from the **Pi shell**:
+
+```bash
+sudo systemctl status ups-web.service
+sudo journalctl -u ups-web.service -n 50 --no-pager
+sudo systemctl disable --now ups-web.service
+```
+
+Disabling the website leaves its credentials, certificate, backups, and saved SNMP configuration intact. PeaNUT, NUT, and SNMP keep running. The settings site has local automated coverage; Pi service hardening, browser certificate acceptance, reboot recovery, and live SNMP access remain hardware verification steps.
+
+## PeaNUT web dashboard
+
+[PeaNUT](https://github.com/Brandawg93/PeaNUT) displays the UPS readings supplied by NUT. The installer pins image `brandawg93/peanut:6.0.0`, which supports `arm64` and `amd64`. It installs Debian's `docker.io` package when Docker is absent. No Compose, Node.js installation, or source build is required on the Pi.
+
+Verified on 2026-10-10: the user ran the dashboard installer on the Pi at `192.168.50.200`, running Debian 13.7 (trixie), `arm64`. PeaNUT 6.0.0 started and passed its container HTTP health check. From the Windows computer, `/api/ping` returned HTTP 200 with `"pong"`, `/login` returned HTTP 200, and `/api/v1/devices` rejected an unauthenticated request with HTTP 401. On 2026-10-16, the physical display setup verified live UPS readings, five-second refresh, automatic login recovery, and dashboard startup after a Pi reboot. Repeat installation remains unverified on hardware.
+
+For an existing adapter, copy only the dashboard installer and its check from **Windows PowerShell**, in this project's directory:
+
+```powershell
+scp .\install_peanut.py .\test_install_peanut.py upsadmin@192.168.50.200:~/
+ssh upsadmin@192.168.50.200
+```
+
+Then run at the **Pi's shell prompt**:
+
+```sh
+cd ~
+python3 test_install_peanut.py
+sudo python3 install_peanut.py
+sudo grep '^WEB_' /etc/ups-peanut.env
+```
+
+Open **`http://192.168.50.200:8080`**, replacing the address with your Pi's address. Sign in with the generated `WEB_USERNAME` and `WEB_PASSWORD`. These are separate from SSH credentials. The initial password and authentication secret stay in root-only `/etc/ups-peanut.env`; the installer does not print them. Keep the page on a trusted LAN: this default uses HTTP, so traffic is not encrypted.
+
+```text
+Browser -> Pi:8080 -> PeaNUT -> 127.0.0.1:3493 -> NUT -> USB UPS
+```
+
+Container `ups-peanut` uses host networking to reach local NUT without depending on the Pi's DHCP address. It starts after Docker on boot with restart policy `unless-stopped`. `/var/lib/ups-peanut` persists dashboard settings and the web login, with ownership `1000:1000` for the container user. The NUT server is preconfigured without NUT credentials, so UPS control operations remain unauthorized. The installer does not modify NUT/SNMP settings or restart their services.
+
+A repeat installation preserves settings and credentials and starts the existing managed container. It refuses to replace an unmanaged container or a different image version. Installation succeeds only when the container's HTTP health check passes; verify actual UPS readings in the dashboard separately.
+
+On the **Pi**, inspect health or restart the dashboard:
+
+```sh
+sudo docker ps --filter name=ups-peanut
+sudo docker exec ups-peanut node healthcheck.mjs
+sudo docker restart ups-peanut
+```
+
+To remove the dashboard, run `sudo docker rm -f ups-peanut`. Settings and credentials remain for recovery. Docker and the UPS adapter services remain installed.
+
+## Physical display dashboard
+
+The Pi's SpotPear 5inch DSI LCD (C) can show PeaNUT full-screen using Chromium and Cage. The configured screen opens the single UPS detail page at startup and refreshes every five seconds. See [physical dashboard configuration and recovery](docs/display-kiosk.md) for the maintained service files, automatic login, checks, and instructions to restore the text console. These display packages and services are configured separately from `deploy.ps1`.
 
 ## Local development checks
 
@@ -356,16 +485,21 @@ On Windows, verify deployment helpers with either Windows PowerShell 5.1 or Powe
 powershell -NoProfile -ExecutionPolicy Bypass -File .\test_deploy.ps1
 ```
 
-This checks Pi/manager address validation, default/restricted setup commands, Linux file packaging (including the SNMP defaults), standalone archive download handling, real OpenSSH key creation/reuse, and the generated Hermes command, including paths with spaces and apostrophes. It does not connect to a Pi. Run `deploy.ps1` for an actual installation and MCP connection test.
+This checks Pi/manager address validation, default/restricted setup commands, optional PeaNUT installation, Linux file packaging, standalone archive download handling, real OpenSSH key creation/reuse, and the generated Hermes command, including paths with spaces and apostrophes. It does not connect to a Pi. Run `deploy.ps1` for an actual installation and MCP connection test.
 
 ```sh
 python3 test_ups_mib.py
 python3 test_ups_autodetect.py
 python3 test_setup_pi.py
 python3 test_ups_mcp.py
+python3 test_install_peanut.py
+python3 test_ups_web.py
+python3 test_install_web.py
 bash -n install.sh
 bash -n setup.sh
 git diff --check
 ```
+
+The PeaNUT check simulates package installation and Docker. It verifies private initial credentials, local NUT configuration, persistent login storage, repeat installation, unmanaged-container protection, architecture checks, and failed HTTP health checks. It does not download or start the real image.
 
 The bridge check uses synthetic inputs and verifies unit conversion, status priority, alarms, missing/invalid data, cache expiry, failed reads/recovery, the `upsc` command boundary, numeric GETNEXT ordering, SET rejection, and the real command-line entry point. The detection check verifies both driver selections, model changes, disconnects, ambiguous/failed scans, serial matching, protection of unmanaged configuration, and service sequencing. The setup check verifies UDP `161`/`public` defaults, backed-up migration from UDP `1161`, disabling distro SNMP before adapter service restarts, repeated runs, migration from multiple NUT listeners to one wildcard with a backup and only a NUT server restart, preservation/migration of communities/ACLs and custom ports, manager validation/restriction, a private SNMP query, and read-only checks. The MCP check verifies lifecycle/version negotiation, tool discovery, sensor units, fixed command boundaries, invalid requests, failed reads/recovery, message limits and the real stdio process. These are not USB or on-wire SNMP integration tests. The extension protocol follows the [Net-SNMP pass_persist documentation](https://www.net-snmp.org/wiki/index.php/Pass_persist).

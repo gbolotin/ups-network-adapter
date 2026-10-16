@@ -1,0 +1,9 @@
+[Unit]
+Description=Restore the local UPS dashboard login when needed
+After=ups-kiosk.service docker.service
+
+[Service]
+Type=oneshot
+# PeaNUT's existing Node runtime and credentials stay inside its container.
+ExecStart=/bin/sh -c '/usr/bin/docker exec -i ups-peanut node --input-type=module < /usr/local/lib/ups-network-adapter/ups-kiosk-login.mjs'
+TimeoutStartSec=20

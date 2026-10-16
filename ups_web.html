@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UPS adapter settings</title>
+<style>
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; background: light-dark(#f3f5f8, #15181d); color: light-dark(#18202c, #eef2f8); }
+main { max-width: 720px; margin: 40px auto; padding: 0 20px 40px; }
+h1 { margin-bottom: 8px; font-size: 2rem; } p { line-height: 1.6; }
+fieldset { margin: 24px 0; padding: 24px; border: 1px solid light-dark(#ccd4df, #455062); border-radius: 12px; background: light-dark(white, #20262f); }
+legend { font-weight: 650; padding: 0 8px; }
+label { display: block; margin-top: 20px; font-weight: 600; }
+input:not([type=checkbox]) { box-sizing: border-box; width: 100%; margin-top: 8px; padding: 12px; border: 1px solid light-dark(#8995a6, #738198); border-radius: 6px; font: inherit; background: light-dark(white, #15181d); color: inherit; }
+small { display: block; margin-top: 6px; line-height: 1.5; }
+button { padding: 12px 24px; border: 0; border-radius: 6px; background: #2359b8; color: white; font: inherit; font-weight: 650; cursor: pointer; }
+:focus-visible { outline: 3px solid #638fe2; outline-offset: 3px; }
+input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; margin-right: 8px; }
+.note { padding: 16px; border-left: 4px solid #638fe2; background: light-dark(#e5edfc, #25344f); }
+@media (max-width: 480px) { main { margin-top: 24px; } fieldset { padding: 16px; } }
+</style>
+</head>
+<body>
+<main>
+<h1>UPS adapter settings</h1>
+<p>Configure SNMP identity and client access for this adapter.</p>
+<form method="post" action="/">
+<input type="hidden" name="csrf" value="{{csrf}}">
+<input type="hidden" name="revision" value="{{revision}}">
+<fieldset>
+<legend>Device identity</legend>
+<label for="name">Name</label>
+<input id="name" name="name" value="{{name}}" maxlength="128" required aria-describedby="identity-help">
+<small id="identity-help">Up to 128 printable characters (255 UTF-8 bytes). Do not use #, double quotes, or backslashes.</small>
+<label for="location">Location</label>
+<input id="location" name="location" value="{{location}}" maxlength="128">
+<small>Leave blank to use the Net-SNMP default.</small>
+<label for="contact">Contact</label>
+<input id="contact" name="contact" value="{{contact}}" maxlength="128">
+<small>Leave blank to use the Net-SNMP default.</small>
+</fieldset>
+<fieldset>
+<legend>Read access</legend>
+<label for="read_community">New read community</label>
+<input id="read_community" type="password" name="read_community" maxlength="255" autocomplete="new-password" aria-describedby="read-help">
+<small id="read-help">Leave blank to keep the current community. Use letters, digits, underscores, dots, or hyphens.</small>
+<label for="read_sources">Allowed IPv4 clients</label>
+<input id="read_sources" name="read_sources" value="{{read_sources}}" required aria-describedby="sources-help">
+<small id="sources-help">Comma-separated addresses or networks, such as 192.168.50.10 or 192.168.50.0/24. “default” permits all clients. Local probe access is always retained.</small>
+</fieldset>
+<fieldset>
+<legend>Write access</legend>
+<p class="note">Write access covers the SNMP system-information subtree only, where Net-SNMP permits SET. Edit configured name, location, and contact here. UPS control writes remain blocked.</p>
+<label><input type="checkbox" name="write_enabled" value="yes" {{write_checked}}>Enable system write access</label>
+<label for="write_community">New write community</label>
+<input id="write_community" type="password" name="write_community" maxlength="255" autocomplete="new-password" aria-describedby="write-help">
+<small id="write-help">Required when first enabling writes. Leave blank to keep an existing write community. Must differ from the read community.</small>
+<label for="write_sources">Allowed IPv4 write clients</label>
+<input id="write_sources" name="write_sources" value="{{write_sources}}" aria-describedby="write-sources-help">
+<small id="write-sources-help">Use specific management addresses or networks. The default permits only the Pi itself.</small>
+</fieldset>
+<p>Saving creates a private backup and briefly restarts SNMP. PeaNUT and NUT keep running. SNMP v1/v2c communities travel unencrypted; restrict access to your management network.</p>
+<button type="submit">Save settings</button>
+</form>
+</main>
+</body>
+</html>
