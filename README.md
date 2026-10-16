@@ -69,7 +69,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -PiAddress 192.
 
 `-ManagerAddress` is optional and forwards `--manager` to setup. Without it, fresh installs use public access; existing restricted ACLs remain restricted.
 
-Deployment also installs the [adapter settings website](#adapter-settings-website) at **`https://PI_ADDRESS:8081`**. It uses separate credentials from SSH and PeaNUT. The installer requires the Pi's existing `openssl` command and installs no extra Python packages.
+Deployment also installs the [adapter configuration website](#adapter-configuration-website) at **`http://PI_ADDRESS`** (port 80). The script prompts interactively for your chosen `admin` password (or accepts `-WebPassword`). It uses separate credentials from SSH and PeaNUT. It installs no extra Python packages.
 
 To include the optional PeaNUT web dashboard, add `-WithPeaNut`:
 
@@ -77,7 +77,7 @@ To include the optional PeaNUT web dashboard, add `-WithPeaNut`:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -PiAddress 192.168.50.200 -WithPeaNut
 ```
 
-This installs Docker from Debian packages if needed, then installs and checks PeaNUT after NUT setup. You can combine `-WithPeaNut` with `-ManagerAddress`. Without `-WithPeaNut`, deployment does not install Docker or PeaNUT. See [PeaNUT web dashboard](#peanut-web-dashboard) for the login and an installation that changes only the dashboard.
+This installs Docker from Debian packages if needed, prompts interactively for your chosen PeaNUT `admin` password (or accepts `-PeaNutPassword`), and installs and checks PeaNUT after NUT setup. You can combine `-WithPeaNut` with `-ManagerAddress`. Without `-WithPeaNut`, deployment does not install Docker or PeaNUT. See [PeaNUT web dashboard](#peanut-web-dashboard) for the login and an installation that changes only the dashboard.
 
 Enter the Pi password at the SSH prompts and again if `sudo` asks. On a first connection, verify the displayed host fingerprint against the Pi before accepting it. The script copies the shell/Python/configuration/test files with Linux newlines, backs up any existing Pi project in its home directory, runs the checks and `sudo bash setup.sh`, and then verifies the MCP tools over SSH. Setup configures one automatically detected USB UPS and replaces all active NUT `LISTEN` lines with **`LISTEN 0.0.0.0 3493`** on both new and existing installations. NUT accepts IPv4 connections on all interfaces, including loopback, for Home Assistant and other NUT clients. Setup preserves existing SNMP communities and ACLs, migrates the former default UDP `1161` to `161`, and disables the standard `snmpd.service`. Fresh SNMP installations listen on all IPv4 interfaces at UDP `161` with read-only community `public` for any source. Other custom ports are preserved. Automated shutdown remains disabled.
 
@@ -364,31 +364,32 @@ This is **partial, read-only UPS-MIB support**, not a claim of an RFC conformanc
 
 PeaNUT and a physical display are optional. A coordinated host/Pi shutdown policy, traps, and SNMPv3 provisioning are not included in this monitoring build; agree and test that policy before relying on the adapter to shut down equipment. To remove the adapter installation, disable `ups-autodetect.service` and `ups-snmp.service`, stop the managed driver, and restore the backed-up NUT configuration and previous enumerator/monitor-service policy.
 
-## Adapter settings website
+## Adapter configuration website
 
-Every `deploy.ps1` run installs and checks a separate settings website on **HTTPS port 8081**. PeaNUT remains on HTTP port 8080. No PeaNUT source changes or reverse proxy are needed.
+Every `deploy.ps1` run installs and checks a configuration website on **HTTP port 80**. PeaNUT remains on HTTP port 8080. No PeaNUT source changes or reverse proxy are needed.
 
 ```text
-Browser -- HTTPS :8081 --> Adapter settings --> SNMP configuration
-Browser -- HTTP  :8080 --> PeaNUT dashboard --> NUT --> USB UPS
+Browser -- HTTP  :80   --> Adapter configuration --> User/Password & SNMP settings
+Browser -- HTTP  :8080 --> PeaNUT dashboard     --> NUT --> USB UPS
 ```
 
 ### Open and sign in
 
-1. Open `https://192.168.50.200:8081`, replacing the address with your Pi's address.
-2. Verify the self-signed certificate fingerprint before accepting the browser's certificate warning.
-3. On the Pi over SSH, run `sudo cat /etc/ups-web-credentials.json`.
-4. Sign in with that file's `username` and `password`. The browser uses HTTP Basic authentication over TLS.
+1. Open `http://192.168.50.200/` (port 80), replacing the address with your Pi's address.
+2. Sign in with username `admin` and your chosen password (configured during `deploy.ps1` or `install_web.py`). If needed, credentials can be reviewed on the Pi over SSH via `sudo cat /etc/ups-web-credentials.json`.
+3. The browser uses HTTP Basic authentication.
 
-Show the expected SHA-256 certificate fingerprint from the **Pi shell**:
+The initial username is `admin`. When running `deploy.ps1` or `sudo python3 install_web.py` interactively, the installer asks you to enter and confirm your password (or accepts `--password` / `--password-stdin`). Credentials and backups are root-only. Repeat installation preserves credentials. Browser authentication usually remains cached until you close the browser session; use a private window on shared computers.
 
-```bash
-sudo openssl x509 -in /var/lib/ups-web/certificate.pem -noout -fingerprint -sha256
-```
+### User Name & Password Configuration
 
-The initial username is `admin`; installation generates a random password before starting the service. Credentials, the TLS private key, and backups are root-only. Repeat installation preserves credentials and the certificate. Browser authentication usually remains cached until you close the browser session; use a private window on shared computers. The self-signed certificate expires after ten years.
+The website includes a dedicated **User & Password** page (`/account`):
+- Change administrator username and password.
+- Optionally synchronize PeaNUT's admin password (port 8080) and the local kiosk login in one click.
 
 ### Configure SNMP
+
+Available on the **SNMP Settings** tab (`/`):
 
 | Setting | Behavior |
 | --- | --- |
@@ -406,7 +407,7 @@ Saving validates the submitted fields, rejects stale forms, creates a private `/
 
 Setup now preserves custom `sysName` values. Later deployment preserves the saved identity, communities, and ACLs. Explicit `--manager` / `-ManagerAddress` replaces **read-community** client rules; separately configured write-community rules remain unchanged.
 
-Keep TCP 8081 and SNMP on a trusted management network with appropriate firewall restrictions. HTTPS encrypts the settings website; SNMP v1/v2c still sends communities unencrypted. The service runs as root to own the SNMP configuration and restart its fixed service. Systemd restricts writable paths to the SNMP configuration directory and web state directory. It provides no arbitrary file editor or command execution endpoint.
+Keep TCP 80 and SNMP on a trusted management network with appropriate firewall restrictions. SNMP v1/v2c still sends communities unencrypted. The service runs as root to own the SNMP configuration and restart its fixed service. Systemd restricts writable paths to the SNMP configuration directory, web state directory, and credentials. It provides no arbitrary file editor or command execution endpoint.
 
 ### Install only the settings website
 
@@ -450,10 +451,11 @@ Then run at the **Pi's shell prompt**:
 cd ~
 python3 test_install_peanut.py
 sudo python3 install_peanut.py
-sudo grep '^WEB_' /etc/ups-peanut.env
 ```
 
-Open **`http://192.168.50.200:8080`**, replacing the address with your Pi's address. Sign in with the generated `WEB_USERNAME` and `WEB_PASSWORD`. These are separate from SSH credentials. The initial password and authentication secret stay in root-only `/etc/ups-peanut.env`; the installer does not print them. Keep the page on a trusted LAN: this default uses HTTP, so traffic is not encrypted.
+The installer prompts interactively for your chosen PeaNUT `admin` password (or accepts `--password` / `--password-stdin`). Credentials can be checked on the Pi via `sudo grep '^WEB_' /etc/ups-peanut.env`.
+
+Open **`http://192.168.50.200:8080`**, replacing the address with your Pi's address. Sign in with username `admin` and your chosen password. These are separate from SSH credentials. Keep the page on a trusted LAN: this default uses HTTP, so traffic is not encrypted.
 
 ```text
 Browser -> Pi:8080 -> PeaNUT -> 127.0.0.1:3493 -> NUT -> USB UPS

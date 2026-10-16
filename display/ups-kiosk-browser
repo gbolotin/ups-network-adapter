@@ -6,6 +6,13 @@ until curl --fail --silent --max-time 3 http://127.0.0.1:8080/api/ping >/dev/nul
     sleep 2
 done
 
+# Ensure previous session tabs are not restored so the kiosk always opens the dashboard.
+rm -rf /var/lib/ups-kiosk/chromium/Default/Sessions 2>/dev/null || true
+if [ -f /var/lib/ups-kiosk/chromium/Default/Preferences ]; then
+    sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/g' /var/lib/ups-kiosk/chromium/Default/Preferences 2>/dev/null || true
+    sed -i 's/"exited_cleanly":false/"exited_cleanly":true/g' /var/lib/ups-kiosk/chromium/Default/Preferences 2>/dev/null || true
+fi
+
 exec /usr/bin/chromium \
     --ozone-platform=wayland \
     --kiosk \
@@ -13,6 +20,8 @@ exec /usr/bin/chromium \
     --no-default-browser-check \
     --disable-session-crashed-bubble \
     --overscroll-history-navigation=0 \
+    --disable-features=AutofillServerCommunication,PasswordManager \
+    --disable-save-password-bubble \
     --password-store=basic \
     --user-data-dir=/var/lib/ups-kiosk/chromium \
     --load-extension=/usr/local/share/ups-kiosk/readability \

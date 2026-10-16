@@ -17,12 +17,26 @@ small { display: block; margin-top: 6px; line-height: 1.5; }
 button { padding: 12px 24px; border: 0; border-radius: 6px; background: #2359b8; color: white; font: inherit; font-weight: 650; cursor: pointer; }
 :focus-visible { outline: 3px solid #638fe2; outline-offset: 3px; }
 input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; margin-right: 8px; }
-.note { padding: 16px; border-left: 4px solid #638fe2; background: light-dark(#e5edfc, #25344f); }
+.nav { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid light-dark(#ccd4df, #455062); padding-bottom: 16px; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.brand { font-size: 1.25rem; font-weight: 700; color: #2359b8; }
+.nav-links { display: flex; gap: 8px; align-items: center; }
+.nav-links a { text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; color: inherit; border: 1px solid transparent; }
+.nav-links a:hover { background: light-dark(#e5edfc, #25344f); }
+.nav-links a.active { background: #2359b8; color: white; }
+.nav-links a.nav-external { border: 1px solid light-dark(#ccd4df, #455062); }
 @media (max-width: 480px) { main { margin-top: 24px; } fieldset { padding: 16px; } }
 </style>
 </head>
 <body>
 <main>
+<nav class="nav">
+<div class="brand">UPS Network Adapter</div>
+<div class="nav-links">
+<a href="/account">User &amp; Password</a>
+<a href="/" class="active">SNMP Settings</a>
+<a href="http://{{host}}:8080/device/ups" target="_blank" class="nav-external">PeaNUT Dashboard ↗</a>
+</div>
+</nav>
 <h1>UPS adapter settings</h1>
 <p>Configure SNMP identity and client access for this adapter.</p>
 <form method="post" action="/">

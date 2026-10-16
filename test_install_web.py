@@ -45,7 +45,7 @@ def main():
 
         class Opener:
             def open(self, request, timeout):
-                assert request.full_url == 'https://127.0.0.1:8081/'
+                assert request.full_url == f'http://127.0.0.1:{installer.PORT}/'
                 assert request.get_header('Authorization').startswith('Basic ')
                 return Response()
 
@@ -62,7 +62,7 @@ def main():
             installer.install()
             secret = credentials.read_bytes()
             assert len(json.loads(secret)['password']) >= 32
-            assert (library / 'ups_web.html').is_file() and unit.is_file()
+            assert (library / 'ups_web.html').is_file() and (library / 'ups_account.html').is_file() and unit.is_file()
             assert config.read_bytes() == original
             assert any(command[1:3] == ['restart', 'ups-web.service'] for command in commands)
             commands.clear()
@@ -102,8 +102,17 @@ def main():
                     assert 'health check failed' in str(error)
                 else:
                     raise AssertionError('Failed HTTPS health check ignored')
-            assert credentials.read_bytes() == secret and config.read_bytes() == original
-    print('PASS: web installation, private credentials, HTTPS generation, fixed service operations, repeat installation and prerequisite checks')
+            for invalid_pwd in ('short', 'has:colon123', 'has\nnewline123', ''):
+                try:
+                    installer.install(password=invalid_pwd)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f'Invalid password accepted: {invalid_pwd}')
+            installer.install(password='my-custom-pass-123')
+            assert json.loads(credentials.read_text())['password'] == 'my-custom-pass-123'
+            assert config.read_bytes() == original
+    print('PASS: web installation, custom and private credentials, HTTPS generation, fixed service operations, repeat installation and prerequisite checks')
 
 
 if __name__ == '__main__':

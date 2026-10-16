@@ -40,7 +40,8 @@ def check() -> None:
             peanut.install()
             assert ['apt-get', 'install', '-y', 'docker.io'] in calls
             assert chown.call_args_list[0].args == (config, 1000, 1000)
-            assert chown.call_args_list[1].args == (environment, 0, 0)
+            assert chown.call_args_list[1].args == (config / 'settings.yml', 1000, 1000)
+            assert chown.call_args_list[2].args == (environment, 0, 0)
             container = next(call for call in calls if call[:2] == ['docker', 'run'])
             assert container[-1] == peanut.IMAGE
             assert container[container.index('--network') + 1] == 'host'
@@ -82,13 +83,23 @@ def check() -> None:
                 pass
             assert len(calls) == 1
             architecture = 'arm64'
+            healthy = True
+            for invalid_pwd in ('short', 'has\nnewline123', ''):
+                try:
+                    peanut.install(password=invalid_pwd)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f'Invalid password accepted: {invalid_pwd}')
+            peanut.install(password='my-peanut-pass-123')
+            assert b'WEB_PASSWORD=my-peanut-pass-123\n' in environment.read_bytes()
             healthy = False
             try:
                 peanut.install()
                 raise AssertionError('Failed health check accepted')
             except RuntimeError:
                 pass
-    print('PeaNUT checks passed: install, private login, local NUT, repeat preservation, ownership, architecture and failed health.')
+    print('PeaNUT checks passed: install, custom and private login, local NUT, repeat preservation, ownership, architecture and failed health.')
 
 
 if __name__ == '__main__':

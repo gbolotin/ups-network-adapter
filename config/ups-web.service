@@ -1,5 +1,5 @@
 [Unit]
-Description=UPS adapter HTTPS settings
+Description=UPS adapter configuration web
 After=network.target ups-snmp.service
 
 [Service]
@@ -11,12 +11,13 @@ Restart=on-failure
 RestartSec=5
 UMask=0077
 NoNewPrivileges=true
-CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 PrivateTmp=true
 PrivateDevices=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/etc/ups-network-adapter /var/lib/ups-web
+ReadWritePaths=/etc/ups-network-adapter /var/lib/ups-web /etc/ups-web-credentials.json /etc/ups-peanut.env /var/lib/ups-peanut
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

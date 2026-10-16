@@ -2,6 +2,7 @@
 
 import base64
 import http.client
+import json
 from pathlib import Path
 import re
 import shutil
@@ -135,6 +136,41 @@ def main():
                     restart.assert_not_called()
                 config.write_text(desired.replace('Office UPS', '<script>alert(1)</script>'))
                 assert '&lt;script&gt;' in request()[1] and '<script>' not in request()[1]
+
+                # Test /account page
+                status, account_page, _ = request(path='/account')
+                assert status == 200 and 'User &amp; Password' in account_page
+                account_token = re.search(r'name="csrf" value="([^"]+)"', account_page)[1]
+                
+                # Wrong current password
+                bad_curr = {'csrf': account_token, 'current_password': 'wrong', 'new_username': 'admin',
+                            'new_password': 'new-password-123', 'confirm_password': 'new-password-123'}
+                assert request('POST', path='/account', body=urlencode(bad_curr))[0] == 400
+
+                # Mismatched new password
+                mismatch = {'csrf': account_token, 'current_password': 'test-password', 'new_username': 'admin',
+                            'new_password': 'new-password-123', 'confirm_password': 'different-pass'}
+                assert request('POST', path='/account', body=urlencode(mismatch))[0] == 400
+
+                # Short password
+                short_pwd = {'csrf': account_token, 'current_password': 'test-password', 'new_username': 'admin',
+                             'new_password': 'short', 'confirm_password': 'short'}
+                assert request('POST', path='/account', body=urlencode(short_pwd))[0] == 400
+
+                # Valid credentials update
+                creds_file = Path(directory) / 'credentials.json'
+                with patch.object(web, 'CREDENTIALS', creds_file):
+                    valid_update = {'csrf': account_token, 'current_password': 'test-password', 'new_username': 'newadmin',
+                                    'new_password': 'new-password-123', 'confirm_password': 'new-password-123'}
+                    res_status, res_body, _ = request('POST', path='/account', body=urlencode(valid_update))
+                    assert res_status == 200 and 'Credentials updated successfully' in res_body
+                    assert json.loads(creds_file.read_text()) == {'username': 'newadmin', 'password': 'new-password-123'}
+                    
+                    # Old auth should now fail
+                    assert request(authorized=True)[0] == 401
+                    # New auth should succeed
+                    new_auth = 'Basic ' + base64.b64encode(b'newadmin:new-password-123').decode()
+                    assert request(extra={'Authorization': new_auth})[0] == 200
             finally:
                 server.shutdown()
                 server.server_close()

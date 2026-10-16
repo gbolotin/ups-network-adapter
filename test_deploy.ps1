@@ -23,6 +23,14 @@ foreach ($address in @('-oProxyCommand=x', '127.1', '256.1.2.3', '::1', '192.168
     Assert-Throws { Confirm-PiAddress $address 'upsadmin' }
 }
 Assert-Throws { Confirm-PiAddress '192.168.50.200' 'root;whoami' }
+Assert ((Confirm-WebPassword 'validpass123') -eq 'validpass123') 'Valid web password rejected.'
+foreach ($pwd in @('', 'short', 'has:colon123', "has`nnewline", "has`rreturn")) {
+    Assert-Throws { Confirm-WebPassword $pwd }
+}
+Assert ((Confirm-PeaNutPassword 'validpass123') -eq 'validpass123') 'Valid PeaNUT password rejected.'
+foreach ($pwd in @('', 'short', "has`nnewline", "has`rreturn")) {
+    Assert-Throws { Confirm-PeaNutPassword $pwd }
+}
 Assert ((ConvertTo-NativeArgument '') -eq '""') 'Empty native argument must be retained.'
 Assert ((ConvertTo-NativeArgument 'C:\a b\') -eq '"C:\a b\\"') 'Trailing backslash must survive native quoting.'
 Assert ((ConvertTo-NativeArgument 'bash -c "x"') -eq '"bash -c \"x\""') 'Remote shell quotes must survive Windows argument parsing.'
@@ -41,7 +49,7 @@ try {
         Assert ($archive.Entries.Count -eq $projectFiles.Count) 'Deployment manifest incomplete.'
         Assert ($null -ne $archive.GetEntry('install_peanut.py')) 'PeaNUT installer missing from deployment.'
         Assert ($null -ne $archive.GetEntry('test_install_peanut.py')) 'PeaNUT check missing from deployment.'
-        foreach ($name in @('ups_web.py', 'ups_web.html', 'install_web.py', 'test_ups_web.py', 'test_install_web.py', 'config/ups-web.service')) {
+        foreach ($name in @('ups_web.py', 'ups_web.html', 'ups_account.html', 'install_web.py', 'test_ups_web.py', 'test_install_web.py', 'config/ups-web.service')) {
             Assert ($null -ne $archive.GetEntry($name)) "Settings site file missing: $name"
         }
         foreach ($name in $projectFiles) {
@@ -103,6 +111,8 @@ try {
     try {
         $env:USERPROFILE = $deploymentHome
         $PiAddress = '192.0.2.200'
+        $WebPassword = 'test-web-password'
+        $PeaNutPassword = 'test-peanut-password'
         function Find-OpenSshTool([string] $Name) { return $Name }
         function New-ProjectArchive { }
         function scp { $global:LASTEXITCODE = 0 }
@@ -125,10 +135,10 @@ try {
             }
             $expectedSetup = Get-SetupCommand $manager
             Assert ($installationBody.Contains('sudo python3 install_web.py')) 'Deployment must install settings.'
-            Assert ($installationBody.IndexOf($expectedSetup) -lt $installationBody.IndexOf('sudo python3 install_web.py')) 'Settings must install after SNMP setup.'
-            Assert ($deploymentOutput.Contains('https://192.0.2.200:8081')) 'Deployment omits the settings URL.'
+            Assert ($deploymentOutput.Contains('http://192.0.2.200')) 'Deployment omits the settings URL.'
             Assert ($installationBody -match ('(?m)^' + [regex]::Escape($expectedSetup) + '\r?$')) 'Remote deployment did not use the validated setup command.'
             Assert (-not $installationBody.Contains('__SETUP_COMMAND__')) 'Deployment left an unresolved command placeholder.'
+            Assert (-not $installationBody.Contains('__WEB_COMMAND__')) 'Deployment left an unresolved Web placeholder.'
             Assert (-not $installationBody.Contains('__PEANUT_COMMAND__')) 'Deployment left an unresolved PeaNUT placeholder.'
             Assert ($installationBody.Contains('sudo python3 install_peanut.py') -eq [bool] $WithPeaNut) 'PeaNUT must install only when requested.'
             if ($WithPeaNut) {

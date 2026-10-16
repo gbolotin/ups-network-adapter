@@ -5,7 +5,9 @@ param(
     [string] $PiUser = 'upsadmin',
     [string] $SourceRef = 'main',
     [string] $ManagerAddress,
-    [switch] $WithPeaNut
+    [switch] $WithPeaNut,
+    [string] $WebPassword,
+    [string] $PeaNutPassword
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +15,7 @@ $projectFiles = @(
     'install.sh', 'setup.sh', 'setup_pi.py', 'ups_mib.py', 'ups_autodetect.py', 'ups_mcp.py',
     'config/ups.conf', 'config/ups-autodetect.service', 'config/ups-snmp.service',
     'test_ups_mib.py', 'test_ups_autodetect.py', 'test_setup_pi.py', 'test_ups_mcp.py',
-    'install_peanut.py', 'test_install_peanut.py', 'ups_web.py', 'ups_web.html',
+    'install_peanut.py', 'test_install_peanut.py', 'ups_web.py', 'ups_web.html', 'ups_account.html',
     'install_web.py', 'test_ups_web.py', 'test_install_web.py', 'config/ups-web.service', 'README.md'
 )
 $utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -35,6 +37,58 @@ function Confirm-PiAddress([string] $Address, [string] $User) {
     }
     if ($User -notmatch '^[a-z_][a-z0-9_-]{0,31}$') { throw 'Enter a valid Linux username.' }
     return $parsed.ToString()
+}
+
+function Confirm-WebPassword([string] $Password) {
+    if ([string]::IsNullOrEmpty($Password)) { throw 'Password cannot be empty.' }
+    if ($Password.Length -lt 8) { throw 'Password must be at least 8 characters long.' }
+    if ($Password.Contains(':')) { throw 'Adapter settings password cannot contain colons (:).' }
+    if ($Password.Contains("`n") -or $Password.Contains("`r")) { throw 'Password cannot contain newlines.' }
+    return $Password
+}
+
+function Confirm-PeaNutPassword([string] $Password) {
+    if ([string]::IsNullOrEmpty($Password)) { throw 'Password cannot be empty.' }
+    if ($Password.Length -lt 8) { throw 'Password must be at least 8 characters long.' }
+    if ($Password.Contains("`n") -or $Password.Contains("`r")) { throw 'Password cannot contain newlines.' }
+    return $Password
+}
+
+function Read-PasswordPrompt([string] $Prompt, [switch] $DisallowColon) {
+    while ($true) {
+        $p1 = Read-Host -Prompt "$Prompt" -AsSecureString
+        $bstr1 = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($p1)
+        $plain1 = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr1)
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr1)
+
+        if ([string]::IsNullOrEmpty($plain1)) {
+            Write-Host 'Password cannot be empty.' -ForegroundColor Yellow
+            continue
+        }
+        if ($plain1.Length -lt 8) {
+            Write-Host 'Password must be at least 8 characters long.' -ForegroundColor Yellow
+            continue
+        }
+        if ($DisallowColon -and $plain1.Contains(':')) {
+            Write-Host 'Password cannot contain colons (:).' -ForegroundColor Yellow
+            continue
+        }
+        if ($plain1.Contains("`n") -or $plain1.Contains("`r")) {
+            Write-Host 'Password cannot contain newlines.' -ForegroundColor Yellow
+            continue
+        }
+
+        $p2 = Read-Host -Prompt "Confirm $Prompt" -AsSecureString
+        $bstr2 = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($p2)
+        $plain2 = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr2)
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr2)
+
+        if ($plain1 -ne $plain2) {
+            Write-Host 'Passwords do not match. Please try again.' -ForegroundColor Yellow
+            continue
+        }
+        return $plain1
+    }
 }
 
 function Get-SetupCommand([string] $Manager) {
@@ -256,7 +310,23 @@ function Invoke-Deployment {
     if (-not $PiAddress) { $PiAddress = Read-Host 'Raspberry Pi IPv4 address (for example 192.168.50.200)' }
     $address = Confirm-PiAddress $PiAddress $PiUser
     $setupCommand = Get-SetupCommand $ManagerAddress
-    $peanutCommand = if ($WithPeaNut) { 'sudo python3 install_peanut.py' } else { '' }
+    if (-not $WebPassword) {
+        $WebPassword = Read-PasswordPrompt 'Configuration website (port 80, admin) password' -DisallowColon
+    }
+    $validatedWebPassword = Confirm-WebPassword $WebPassword
+    $webPasswordB64 = [Convert]::ToBase64String($utf8.GetBytes($validatedWebPassword))
+    $webCommand = "printf %s '$webPasswordB64' | base64 -d | sudo python3 install_web.py --password-stdin"
+
+    $validatedPeaNutPassword = $null
+    $peanutCommand = ''
+    if ($WithPeaNut) {
+        if (-not $PeaNutPassword) {
+            $PeaNutPassword = Read-PasswordPrompt 'PeaNUT dashboard (port 8080, admin) password'
+        }
+        $validatedPeaNutPassword = Confirm-PeaNutPassword $PeaNutPassword
+        $peanutPasswordB64 = [Convert]::ToBase64String($utf8.GetBytes($validatedPeaNutPassword))
+        $peanutCommand = "printf %s '$peanutPasswordB64' | base64 -d | sudo python3 install_peanut.py --password-stdin"
+    }
     $ssh = Find-OpenSshTool 'ssh'
     $scp = Find-OpenSshTool 'scp'
     $keygen = Find-OpenSshTool 'ssh-keygen'
@@ -301,14 +371,14 @@ for test in test_ups_mib.py test_ups_autodetect.py test_setup_pi.py test_ups_mcp
     /usr/bin/python3 "$test"
 done
 __SETUP_COMMAND__
-sudo python3 install_web.py
+__WEB_COMMAND__
 __PEANUT_COMMAND__
 '@.Replace('__ARCHIVE__', $basename).Replace('__ID__', $id).Replace('__SETUP_COMMAND__', $setupCommand)
-        $installation = $installation.Replace('__PEANUT_COMMAND__', $peanutCommand)
+        $installation = $installation.Replace('__WEB_COMMAND__', $webCommand).Replace('__PEANUT_COMMAND__', $peanutCommand)
         Write-Host 'Installing and checking NUT, USB autodetection, SNMP and MCP on the Pi...'
         Invoke-RemoteScript $ssh $adminOptions $target $installation -Terminal
-        Write-Host "Adapter settings: https://${address}:8081; initial login: sudo cat /etc/ups-web-credentials.json on the Pi."
-        if ($WithPeaNut) { Write-Host "PeaNUT dashboard: http://${address}:8080; initial login: sudo grep '^WEB_' /etc/ups-peanut.env on the Pi." }
+        Write-Host "Adapter configuration web: http://${address} (username: admin, using your chosen password)."
+        if ($WithPeaNut) { Write-Host "PeaNUT dashboard: http://${address}:8080 (username: admin, using your chosen password)." }
         $keyPath = Join-Path $env:USERPROFILE '.ssh\ups_adapter_mcp'
         $publicKey = New-McpKey $keygen $keyPath
         Write-Host 'Authorizing the MCP-only key on the Pi (one more Pi password prompt)...'
