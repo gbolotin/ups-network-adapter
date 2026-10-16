@@ -16,4 +16,3 @@ for(let attempt=0;attempt<20;attempt++) {
 assert.equal(state.heading,'22px');assert.equal(state.axis,'18px');assert.equal(state.legend,'18px');assert.equal(state.dataHeading,'22px');assert.equal(state.cell,'20px');assert.equal(state.gauge,'48px');assert.equal(state.overflow,false);assert.equal(state.width,1024);assert.equal(state.height,600);
 console.log('Readability checks passed after a page reload:',JSON.stringify(state));
 await call('Runtime.evaluate',{expression:'window.scrollTo(0,0)'});socket.close();
-
