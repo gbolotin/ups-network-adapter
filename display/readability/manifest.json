@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "UPS display readability",
+  "version": "1.0.0",
+  "description": "Larger Voltage and UPS Data text on the physical UPS display.",
+  "content_scripts": [
+    {
+      "matches": ["http://127.0.0.1:8080/*"],
+      "css": ["readability.css"]
+    }
+  ]
+}

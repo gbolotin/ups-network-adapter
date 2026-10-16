@@ -11,6 +11,34 @@ The installed files are maintained in `display/`:
 - `ups-kiosk.service` → `/etc/systemd/system/ups-kiosk.service`
 - `ups-kiosk-login.mjs` → `/usr/local/lib/ups-network-adapter/ups-kiosk-login.mjs`
 - `ups-kiosk-login.service` and `.timer` → `/etc/systemd/system/`
+- `readability/` → `/usr/local/share/ups-kiosk/readability/`
+
+Chromium loads the local `readability` extension to enlarge only the Voltage and
+UPS Data cards. Their headings use 22px text; chart labels use 18px; table text
+uses 20px. The extension contains only CSS and applies to the loopback PeaNUT
+page in the kiosk browser. It requires no additional packages and does not
+change PeaNUT's container or other browsers. The styling survives page refreshes
+and kiosk restarts.
+
+The kiosk also uses a transparent cursor theme at
+`/usr/local/share/ups-kiosk/icons/default`. Generate it with
+`sudo python3 display/install-hidden-cursor.py` before installing the kiosk
+service. The service's `XCURSOR_PATH` applies it to Cage and Chromium, including
+the session's default pointer. The stylesheet also hides browser cursors.
+Browser CSS alone did not hide the arrow visible on the physical display.
+Touch controls remain available.
+
+The native wlroots cursor loader verified that the default arrow and all
+installed cursor aliases resolve to fully transparent images. The running Cage
+session uses the dedicated cursor path. Physical disappearance of the arrow
+still requires confirmation on the screen; a browser screenshot does not
+capture the compositor's pointer.
+
+The 2026-10-16 readability check verified these computed font sizes on the
+running 1024×600 display after a kiosk restart and page reload. Both cards fit
+without horizontal page scrolling; the main gauge text remains 48px. Screenshots
+are saved locally as `output/playwright/kiosk-voltage.png` and
+`output/playwright/kiosk-ups-data.png`.
 
 The existing boot configuration includes:
 

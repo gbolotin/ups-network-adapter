@@ -13,6 +13,8 @@ Environment=XDG_SESSION_TYPE=wayland
 Environment=XDG_SESSION_CLASS=user
 Environment=XDG_SEAT=seat0
 Environment=XDG_VTNR=1
+Environment=XCURSOR_THEME=default
+Environment=XCURSOR_PATH=/usr/local/share/ups-kiosk/icons
 TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes
