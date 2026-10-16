@@ -1,0 +1,10 @@
+[Unit]
+Description=Keep the physical UPS dashboard signed in
+
+[Timer]
+OnBootSec=20
+OnUnitInactiveSec=30
+Unit=ups-kiosk-login.service
+
+[Install]
+WantedBy=timers.target

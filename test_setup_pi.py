@@ -27,6 +27,8 @@ def check() -> None:
     assert 'agentaddress udp:0.0.0.0:161' in first
     assert 'rocommunity public default -V upsView' in first
     assert prepare_snmp(first, [], template, None)[0] == first
+    identity = first.replace('sysName ups-adapter', 'sysName Office UPS') + "sysContact O'Neil\n"
+    assert prepare_snmp(identity, [], template, None)[0] == identity, 'Setup must preserve web-configured identity'
     lan, same_secret, _ = prepare_snmp(first, [], template, '192.0.2.20')
     assert same_secret == secret and 'agentaddress udp:0.0.0.0:161' in lan
     assert 'rocommunity public 192.0.2.20/32 -V upsView' in lan

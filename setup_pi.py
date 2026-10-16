@@ -50,6 +50,8 @@ def nut_ready(directory: Path) -> bool:
 def communities(content: str) -> list[list[str]]:
     entries = []
     for line in content.splitlines():
+        if not re.match(r'^\s*rocommunity(?:\s|$)', line):
+            continue
         fields = shlex.split(line, comments=True)
         if fields and fields[0] == 'rocommunity':
             if len(fields) < 2:
@@ -97,7 +99,8 @@ def prepare_snmp(current: str, legacy: list[str], template: str, manager: str | 
         content += f'rocommunity {secret} 127.0.0.1/32 -V upsView\n'
     else:
         secret = next(entry[1] for entry in entries if len(entry) >= 3 and entry[2] in {'127.0.0.1', '127.0.0.1/32'})
-    content = setting(content, r'^\s*sysName\s+', 'sysName ups-adapter')
+    if not re.search(r'^\s*sysName\s+', content, re.MULTILINE):
+        content = setting(content, r'^\s*sysName\s+', 'sysName ups-adapter')
     content = setting(content, r'^\s*pass_persist\s+\.?1\.3\.6\.1\.2\.1\.33\s+',
                       'pass_persist .1.3.6.1.2.1.33 /usr/bin/python3 -u /usr/local/lib/ups-network-adapter/ups_mib.py --ups ups')
     for subtree in ('1', '33'):

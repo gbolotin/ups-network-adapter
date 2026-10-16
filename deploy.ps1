@@ -4,14 +4,17 @@ param(
     [string] $PiAddress,
     [string] $PiUser = 'upsadmin',
     [string] $SourceRef = 'main',
-    [string] $ManagerAddress
+    [string] $ManagerAddress,
+    [switch] $WithPeaNut
 )
 
 $ErrorActionPreference = 'Stop'
 $projectFiles = @(
     'install.sh', 'setup.sh', 'setup_pi.py', 'ups_mib.py', 'ups_autodetect.py', 'ups_mcp.py',
     'config/ups.conf', 'config/ups-autodetect.service', 'config/ups-snmp.service',
-    'test_ups_mib.py', 'test_ups_autodetect.py', 'test_setup_pi.py', 'test_ups_mcp.py', 'README.md'
+    'test_ups_mib.py', 'test_ups_autodetect.py', 'test_setup_pi.py', 'test_ups_mcp.py',
+    'install_peanut.py', 'test_install_peanut.py', 'ups_web.py', 'ups_web.html',
+    'install_web.py', 'test_ups_web.py', 'test_install_web.py', 'config/ups-web.service', 'README.md'
 )
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
@@ -253,6 +256,7 @@ function Invoke-Deployment {
     if (-not $PiAddress) { $PiAddress = Read-Host 'Raspberry Pi IPv4 address (for example 192.168.50.200)' }
     $address = Confirm-PiAddress $PiAddress $PiUser
     $setupCommand = Get-SetupCommand $ManagerAddress
+    $peanutCommand = if ($WithPeaNut) { 'sudo python3 install_peanut.py' } else { '' }
     $ssh = Find-OpenSshTool 'ssh'
     $scp = Find-OpenSshTool 'scp'
     $keygen = Find-OpenSshTool 'ssh-keygen'
@@ -293,13 +297,18 @@ with zipfile.ZipFile(pathlib.Path.home() / '__ARCHIVE__') as archive:
         target.write_bytes(archive.read(entry))
 PY
 cd ups-network-adapter
-for test in test_ups_mib.py test_ups_autodetect.py test_setup_pi.py test_ups_mcp.py; do
+for test in test_ups_mib.py test_ups_autodetect.py test_setup_pi.py test_ups_mcp.py test_install_peanut.py test_ups_web.py test_install_web.py; do
     /usr/bin/python3 "$test"
 done
 __SETUP_COMMAND__
+sudo python3 install_web.py
+__PEANUT_COMMAND__
 '@.Replace('__ARCHIVE__', $basename).Replace('__ID__', $id).Replace('__SETUP_COMMAND__', $setupCommand)
+        $installation = $installation.Replace('__PEANUT_COMMAND__', $peanutCommand)
         Write-Host 'Installing and checking NUT, USB autodetection, SNMP and MCP on the Pi...'
         Invoke-RemoteScript $ssh $adminOptions $target $installation -Terminal
+        Write-Host "Adapter settings: https://${address}:8081; initial login: sudo cat /etc/ups-web-credentials.json on the Pi."
+        if ($WithPeaNut) { Write-Host "PeaNUT dashboard: http://${address}:8080; initial login: sudo grep '^WEB_' /etc/ups-peanut.env on the Pi." }
         $keyPath = Join-Path $env:USERPROFILE '.ssh\ups_adapter_mcp'
         $publicKey = New-McpKey $keygen $keyPath
         Write-Host 'Authorizing the MCP-only key on the Pi (one more Pi password prompt)...'

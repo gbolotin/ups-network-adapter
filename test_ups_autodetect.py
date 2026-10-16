@@ -8,7 +8,7 @@ import tempfile
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from ups_autodetect import MARKER, apply_selection, main, parse_scan, scan_usb, write_config
+from ups_autodetect import MARKER, apply_selection, main, parse_scan, scan_usb, usb_topology, write_config
 
 APC = '''Scanning USB bus.
 [nutdev1]
@@ -38,6 +38,18 @@ def check() -> None:
     assert apc.startswith(MARKER + '[ups]\n')
     assert 'driver = usbhid-ups' in apc and 'vendorid = 051d' in apc
     assert 'serial = "SYNTHETIC_APC_001"' in apc and 'sdorder = -1' in apc
+    assert '    pollonly\n    pollinterval = 2\n' in apc
+    assert 'pollonly' in parse_scan(APC.replace('Back-UPS BX750MI', 'Back-UPS BX750MI '))[0]
+    for other_device in (
+        APC.replace('Back-UPS BX750MI', 'Back-UPS CS 650'),
+        APC.replace('    product = "Back-UPS BX750MI"\n', ''),
+        APC.replace('051D', '0463'),
+        APC.replace('0002', '0003'),
+        APC.replace('usbhid-ups', 'nutdrv_qx'),
+        EATON,
+    ):
+        other_config = parse_scan(other_device)[0]
+        assert 'pollonly' not in other_config and 'pollinterval' not in other_config
     assert 'bus =' not in apc and 'device =' not in apc
     eaton = parse_scan(EATON)
     assert 'driver = nutdrv_qx' in eaton[0] and 'serial =' not in eaton[0]
@@ -111,9 +123,10 @@ def check() -> None:
                 raise AssertionError('Ownership failure was ignored')
             assert path.read_text() == eaton[0] and list(Path(folder).iterdir()) == [path]
 
-    def poll(scans):
-        sleeps = [None] * (len(scans) - 1) + [InterruptedError('end check')]
-        with patch('ups_autodetect.scan_usb', side_effect=scans), patch('ups_autodetect.apply_selection') as apply, patch('ups_autodetect.time.sleep', side_effect=sleeps), patch('builtins.print') as log:
+    def poll(scans, topologies=None):
+        count = len(scans) if topologies is None else len(topologies)
+        sleeps = [None] * (count - 1) + [InterruptedError('end check')]
+        with patch('ups_autodetect.scan_usb', side_effect=scans), patch('ups_autodetect.usb_topology', side_effect=topologies, return_value=None), patch('ups_autodetect.apply_selection') as apply, patch('ups_autodetect.time.sleep', side_effect=sleeps), patch('builtins.print') as log:
             try:
                 main()
             except InterruptedError:
@@ -147,6 +160,32 @@ def check() -> None:
     no_address = parse_scan(APC.replace('    bus = "001"\n', '').replace('    device = "025"\n', ''))
     no_address_or_serial = parse_scan(APC.replace('    bus = "001"\n', '').replace('    device = "025"\n', '').replace('    serial = "SYNTHETIC_APC_001"\n', ''))
     assert poll([no_address, no_address_or_serial])[0] == [no_address[0], no_address_or_serial[0]]
+
+    # An unchanged physical device needs no repeated active descriptor queries.
+    topology = (('1-1.3', '051d', '0002', '001', '025'),)
+    moved_topology = (('1-1.3', '051d', '0002', '001', '027'),)
+    assert poll([parse_scan(APC), moved], [topology, topology, topology, moved_topology, moved_topology])[0] == [apc, moved[0]]
+    # Any added USB device forces re-evaluation, including a second unsupported UPS.
+    added_topology = topology + (('1-1.4', '1234', '5678', '001', '028'),)
+    assert poll([parse_scan(APC), ambiguous], [topology, topology, added_topology])[0] == [apc, MARKER]
+    # Failed selection and unavailable sysfs keep retrying, even with no topology change.
+    assert poll([failed, parse_scan(APC)], [topology, topology])[0] == [MARKER, apc]
+    assert poll([parse_scan(APC), moved], [topology, None])[0] == [apc, moved[0]]
+
+    with tempfile.TemporaryDirectory() as folder:
+        root = Path(folder)
+        device = root / '1-1.3'
+        device.mkdir()
+        for name, value in {'idVendor': '051d', 'idProduct': '0002', 'busnum': '1', 'devnum': '59'}.items():
+            device.joinpath(name).write_text(value)
+        root.joinpath('interface-without-identifiers').mkdir()
+        first = usb_topology(root)
+        assert first == (('1-1.3', '051d', '0002', '1', '59'),)
+        device.joinpath('devnum').write_text('60')
+        assert usb_topology(root) != first
+        device.joinpath('devnum').unlink()
+        assert usb_topology(root) is None
+        assert usb_topology(root / 'missing') is None
     print('PASS: single UPS detection, stable identity across missing serials, model switching, ambiguity/errors, matching validation and service sequencing')
 
 

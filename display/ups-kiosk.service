@@ -1,0 +1,32 @@
+[Unit]
+Description=Full-screen UPS dashboard on the DSI display
+After=systemd-user-sessions.service systemd-logind.service docker.service getty@tty1.service
+Wants=systemd-logind.service docker.service
+Conflicts=getty@tty1.service
+ConditionPathExists=/dev/tty0
+StartLimitIntervalSec=0
+
+[Service]
+User=upsdisplay
+PAMName=login
+Environment=XDG_SESSION_TYPE=wayland
+Environment=XDG_SESSION_CLASS=user
+Environment=XDG_SEAT=seat0
+Environment=XDG_VTNR=1
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+ExecStart=/usr/bin/dbus-run-session /usr/bin/cage -d -s -- /usr/local/bin/ups-kiosk-browser
+ExecStartPost=+/usr/bin/chvt 1
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

@@ -31,6 +31,11 @@ def parse_scan(output: str) -> tuple[str, tuple[str, ...], str]:
     config = MARKER + f"[ups]\n    driver = {driver}\n    port = auto\n"
     for key in ("vendorid", "productid"):
         config += f"    {key} = {fields[key].lower()}\n"
+    if (driver == "usbhid-ups" and fields["vendorid"].lower() == "051d"
+            and fields["productid"].lower() == "0002"
+            and fields.get("product", "").strip() == "Back-UPS BX750MI"):
+        # Avoid interrupts implicated in APC BX firmware faults; retain two-second polling.
+        config += "    pollonly\n    pollinterval = 2\n"
     serial = fields.get("serial", "")
     if serial:
         if len(serial) > 255 or any(ord(character) < 32 or ord(character) > 126 for character in serial):
@@ -67,6 +72,20 @@ def scan_usb() -> tuple[str, tuple[str, ...], str]:
     except (OSError, subprocess.SubprocessError, configparser.Error, ValueError) as error:
         # Fail closed instead of retaining a previous UPS selection on scan errors.
         return MARKER, (), f"USB detection failed: {error}"
+
+
+def usb_topology(root: Path = Path('/sys/bus/usb/devices')) -> tuple | None:
+    """Read cached kernel identities without issuing USB descriptor requests."""
+    try:
+        devices = []
+        for path in root.iterdir():
+            if path.joinpath('idVendor').exists():
+                devices.append((path.name, *[path.joinpath(name).read_text().strip()
+                                             for name in ('idVendor', 'idProduct', 'busnum', 'devnum')]))
+        return tuple(sorted(devices))
+    except OSError:
+        # A racing disconnect or unavailable sysfs must not suppress a real scan.
+        return None
 
 
 def write_config(path: Path, content: str, group: str = "nut") -> None:
@@ -106,8 +125,14 @@ def apply_selection(content: str, path: Path = CONFIG) -> None:
 def main() -> None:
     previous = None
     last_message = None
+    last_topology = None
     while True:
+        topology = usb_topology()
+        if previous and topology is not None and topology == last_topology:
+            time.sleep(10)
+            continue
         detected = scan_usb()
+        last_topology = topology if detected[1] else None
         identity = detected[1]
         changed = previous is None or not same_usb_device(previous, identity)
         message = detected[2]
@@ -124,7 +149,7 @@ def main() -> None:
             if changed and identity:
                 print(f'USB selection: bus {identity[4]}, device {identity[5]}, serial {identity[3] or "unavailable"}', flush=True)
             last_message = message
-        # ponytail: periodic USB scan, up to 10 seconds before discovery; use udev events if instant switching is needed.
+        # Check cached topology every ten seconds; actively scan only after a change or failed selection.
         time.sleep(10)
 
 
