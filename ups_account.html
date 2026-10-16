@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>User &amp; Password Configuration - UPS Adapter</title>
+<style>
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; background: light-dark(#f3f5f8, #15181d); color: light-dark(#18202c, #eef2f8); }
+main { max-width: 720px; margin: 40px auto; padding: 0 20px 40px; }
+h1 { margin-bottom: 8px; font-size: 2rem; } p { line-height: 1.6; }
+fieldset { margin: 24px 0; padding: 24px; border: 1px solid light-dark(#ccd4df, #455062); border-radius: 12px; background: light-dark(white, #20262f); }
+legend { font-weight: 650; padding: 0 8px; }
+label { display: block; margin-top: 20px; font-weight: 600; }
+input:not([type=checkbox]) { box-sizing: border-box; width: 100%; margin-top: 8px; padding: 12px; border: 1px solid light-dark(#8995a6, #738198); border-radius: 6px; font: inherit; background: light-dark(white, #15181d); color: inherit; }
+small { display: block; margin-top: 6px; line-height: 1.5; }
+button { padding: 12px 24px; border: 0; border-radius: 6px; background: #2359b8; color: white; font: inherit; font-weight: 650; cursor: pointer; }
+:focus-visible { outline: 3px solid #638fe2; outline-offset: 3px; }
+input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; margin-right: 8px; }
+.note { padding: 16px; border-left: 4px solid #638fe2; background: light-dark(#e5edfc, #25344f); }
+.nav { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid light-dark(#ccd4df, #455062); padding-bottom: 16px; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.brand { font-size: 1.25rem; font-weight: 700; color: #2359b8; }
+.nav-links { display: flex; gap: 8px; align-items: center; }
+.nav-links a { text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; color: inherit; border: 1px solid transparent; }
+.nav-links a:hover { background: light-dark(#e5edfc, #25344f); }
+.nav-links a.active { background: #2359b8; color: white; }
+.nav-links a.nav-external { border: 1px solid light-dark(#ccd4df, #455062); }
+@media (max-width: 480px) { main { margin-top: 24px; } fieldset { padding: 16px; } }
+</style>
+</head>
+<body>
+<main>
+<nav class="nav">
+<div class="brand">UPS Network Adapter</div>
+<div class="nav-links">
+<a href="/account" class="active">User &amp; Password</a>
+<a href="/">SNMP Settings</a>
+<a href="http://{{host}}:8080/device/ups" target="_blank" class="nav-external">PeaNUT Dashboard ↗</a>
+</div>
+</nav>
+
+<h1>User &amp; Password Configuration</h1>
+<p>Configure administrator credentials for the configuration web interface and connected services.</p>
+
+<form method="post" action="/account">
+<input type="hidden" name="csrf" value="{{csrf}}">
+
+<fieldset>
+<legend>Administrator Credentials</legend>
+<label for="current_username">Current username</label>
+<input id="current_username" value="{{username}}" readonly style="opacity: 0.75; cursor: not-allowed;">
+
+<label for="new_username">New username</label>
+<input id="new_username" name="new_username" value="{{username}}" maxlength="64" required autocomplete="username" aria-describedby="user-help">
+<small id="user-help">Use 1–64 letters, numbers, underscores, or hyphens.</small>
+
+<label for="current_password">Current password</label>
+<input id="current_password" type="password" name="current_password" required autocomplete="current-password" aria-describedby="curr-help">
+<small id="curr-help">Enter your current password to authorize this credential change.</small>
+
+<label for="new_password">New password</label>
+<input id="new_password" type="password" name="new_password" minlength="8" required autocomplete="new-password" aria-describedby="new-help">
+<small id="new-help">Must be at least 8 characters long. Colons (:) and newlines are not permitted.</small>
+
+<label for="confirm_password">Confirm new password</label>
+<input id="confirm_password" type="password" name="confirm_password" minlength="8" required autocomplete="new-password">
+</fieldset>
+
+<fieldset style="display: {{peanut_display}};">
+<legend>PeaNUT Dashboard Sync</legend>
+<label><input type="checkbox" name="update_peanut" value="yes" {{peanut_checked}}>Synchronize PeaNUT dashboard password (port 8080)</label>
+<small>Updates PeaNUT's admin password and kiosk auto-login to match this new password.</small>
+</fieldset>
+
+<button type="submit">Update credentials</button>
+</form>
+</main>
+</body>
+</html>
