@@ -1,0 +1,37 @@
+/* The touchscreen kiosk does not need a mouse pointer, including over controls. */
+html,
+body,
+body * {
+  cursor: none !important;
+}
+
+/* Only the kiosk browser loads this stylesheet. Keep the status gauges unchanged. */
+[data-testid="volts-chart"] [data-slot="accordion-trigger"],
+[data-testid="grid"] [data-slot="accordion-trigger"] {
+  font-size: 22px !important;
+  line-height: 1.4 !important;
+}
+
+[data-testid="volts-chart"] [data-slot="chart"],
+[data-testid="volts-chart"] .recharts-legend-wrapper,
+[data-testid="volts-chart"] .recharts-legend-wrapper span,
+[data-testid="volts-chart"] .recharts-legend-wrapper button,
+[data-testid="volts-chart"] .recharts-text,
+[data-testid="volts-chart"] .recharts-label {
+  font-size: 18px !important;
+  line-height: 1.4 !important;
+}
+
+[data-testid="grid"] table,
+[data-testid="grid"] th,
+[data-testid="grid"] td,
+[data-testid="grid"] th span,
+[data-testid="grid"] td span,
+[data-testid="grid"] input {
+  font-size: 20px !important;
+  line-height: 1.4 !important;
+}
+
+[data-testid="grid"] td span {
+  overflow-wrap: anywhere;
+}
