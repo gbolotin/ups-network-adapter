@@ -47,7 +47,7 @@ def install(password: str | None = None) -> None:
         raise ValueError('OpenSSL is required for the HTTPS certificate. Install it before retrying.')
     targets = [CONFIG, CONFIG.parent, STATE, CREDENTIALS, LIBRARY, UNIT]
     targets += [STATE / name for name in ('certificate.pem', 'key.pem')]
-    targets += [LIBRARY / name for name in ('ups_web.py', 'ups_web.html', 'ups_account.html', 'ups_maintenance.html')]
+    targets += [LIBRARY / name for name in ('ups_web.py', 'ups_web.html', 'ups_account.html', 'ups_maintenance.html', 'ups_kiosk.html')]
     if any(path.is_symlink() for path in targets):
         raise ValueError('Refusing to modify symlinked web configuration or installation files')
     settings(CONFIG.read_text(encoding='utf-8'))
@@ -101,7 +101,7 @@ def install(password: str | None = None) -> None:
         if (STATE / name).is_file():
             (STATE / name).chmod(0o600)
             os.chown(STATE / name, 0, 0)
-    for source, target in [(PROJECT / name, LIBRARY / name) for name in ('ups_web.py', 'ups_web.html', 'ups_account.html', 'ups_maintenance.html')] + [(PROJECT / 'config/ups-web.service', UNIT)]:
+    for source, target in [(PROJECT / name, LIBRARY / name) for name in ('ups_web.py', 'ups_web.html', 'ups_account.html', 'ups_maintenance.html', 'ups_kiosk.html')] + [(PROJECT / 'config/ups-web.service', UNIT)]:
         if not target.exists() or source.read_bytes() != target.read_bytes():
             # Atomic replacement keeps a running site from reading a partially copied page.
             descriptor, name = tempfile.mkstemp(dir=target.parent)
@@ -115,6 +115,28 @@ def install(password: str | None = None) -> None:
                 if os.path.exists(name):
                     os.unlink(name)
             changed = True
+    kiosk_share = Path('/usr/local/share/ups-kiosk/readability')
+    if kiosk_share.is_dir() and (PROJECT / 'display/readability').is_dir():
+        kiosk_changed = False
+        for name in ('manifest.json', 'toolbar.js', 'readability.css'):
+            src = PROJECT / 'display/readability' / name
+            tgt = kiosk_share / name
+            if tgt.is_symlink():
+                raise ValueError('Refusing to modify symlinked kiosk files')
+            if src.is_file() and (not tgt.exists() or src.read_bytes() != tgt.read_bytes()):
+                descriptor, name_tmp = tempfile.mkstemp(dir=tgt.parent)
+                try:
+                    with os.fdopen(descriptor, 'wb') as stream:
+                        stream.write(src.read_bytes())
+                    os.chown(name_tmp, 0, 0)
+                    os.chmod(name_tmp, 0o644)
+                    os.replace(name_tmp, tgt)
+                finally:
+                    if os.path.exists(name_tmp):
+                        os.unlink(name_tmp)
+                kiosk_changed = True
+        if kiosk_changed and Path('/etc/systemd/system/ups-kiosk.service').is_file():
+            subprocess.run(['/usr/bin/systemctl', 'restart', 'ups-kiosk.service'], check=False, timeout=30)
     subprocess.run(['/usr/bin/systemctl', 'daemon-reload'], check=True, timeout=30)
     subprocess.run(['/usr/bin/systemctl', 'enable', 'ups-web.service'], check=True, timeout=30)
     subprocess.run(['/usr/bin/systemctl', 'restart' if changed else 'start', 'ups-web.service'], check=True, timeout=30)

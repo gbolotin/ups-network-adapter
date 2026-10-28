@@ -1,0 +1,1427 @@
+{
+  "title": "Home Console",
+  "swipe_nav": {
+    "enable": true,
+    "wrap": true,
+    "swipe_amount": 25,
+    "prevent_default": true,
+    "enable_mouse_swipe": false
+  },
+  "views": [
+    {
+      "title": "UPS",
+      "path": "ups",
+      "icon": "mdi:power-plug-battery",
+      "panel": true,
+      "cards": [
+        {
+          "type": "vertical-stack",
+          "cards": [
+            {
+              "type": "markdown",
+              "content": "## UPS\nStatus: **{{ states('sensor.ups_apc_status') }}** · NUT: **{{ states('sensor.ups_apc_status_data') }}**"
+            },
+            {
+              "type": "grid",
+              "columns": 3,
+              "square": false,
+              "cards": [
+                {
+                  "type": "tile",
+                  "entity": "sensor.ups_apc_battery_charge",
+                  "name": "Battery charge"
+                },
+                {
+                  "type": "tile",
+                  "entity": "sensor.ups_apc_load",
+                  "name": "Load"
+                },
+                {
+                  "type": "tile",
+                  "entity": "sensor.ups_apc_input_voltage",
+                  "name": "Input voltage"
+                },
+                {
+                  "type": "tile",
+                  "entity": "sensor.ups_battery_runtime",
+                  "name": "Battery runtime"
+                },
+                {
+                  "type": "tile",
+                  "entity": "sensor.ups_battery_voltage",
+                  "name": "Battery voltage"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Home",
+      "path": "home",
+      "icon": "mdi:home",
+      "panel": true,
+      "cards": [
+        {
+          "type": "vertical-stack",
+          "cards": [
+            {
+              "type": "markdown",
+              "content": "## 1 · Lock Ultra 17\nState: **{{ states('lock.lock_ultra_17') }}**\n\nBattery: **{{ states('sensor.lock_ultra_17_battery') }}** {{ state_attr('sensor.lock_ultra_17_battery', 'unit_of_measurement') or '' }}"
+            },
+            {
+              "type": "vertical-stack",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "## 2 · Aquarium · Office"
+                },
+                {
+                  "type": "grid",
+                  "columns": 2,
+                  "square": false,
+                  "cards": [
+                    {
+                      "type": "tile",
+                      "entity": "switch.power_plug_cd43",
+                      "name": "Aquarium outlet",
+                      "tap_action": {
+                        "action": "toggle"
+                      }
+                    },
+                    {
+                      "type": "tile",
+                      "entity": "sensor.power_plug_cd43_power",
+                      "name": "Measured power"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "vertical-stack",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "## 3 · Xiaomi C400 · Living room"
+                },
+                {
+                  "type": "grid",
+                  "columns": 3,
+                  "square": false,
+                  "cards": [
+                    {
+                      "type": "tile",
+                      "entity": "switch.chuangmi_sg_1069362690_039c04_on_p_2_1",
+                      "name": "Camera power",
+                      "tap_action": {
+                        "action": "toggle"
+                      }
+                    },
+                    {
+                      "type": "tile",
+                      "entity": "switch.chuangmi_sg_1069362690_039c04_motion_detection_p_5_1",
+                      "name": "Motion detection",
+                      "tap_action": {
+                        "action": "toggle"
+                      }
+                    },
+                    {
+                      "type": "tile",
+                      "entity": "switch.chuangmi_sg_1069362690_039c04_human_tracking_p_2_9",
+                      "name": "Human tracking",
+                      "tap_action": {
+                        "action": "toggle"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "vertical-stack",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "## 4 · Denon AVC-X4700H"
+                },
+                {
+                  "type": "media-control",
+                  "entity": "media_player.denon_avc_x4700h"
+                },
+                {
+                  "type": "conditional",
+                  "conditions": [
+                    {
+                      "condition": "state",
+                      "entity": "media_player.denon_avc_x4700h",
+                      "state_not": "off"
+                    },
+                    {
+                      "condition": "state",
+                      "entity": "media_player.denon_avc_x4700h",
+                      "state_not": "unknown"
+                    },
+                    {
+                      "condition": "state",
+                      "entity": "media_player.denon_avc_x4700h",
+                      "state_not": "unavailable"
+                    }
+                  ],
+                  "card": {
+                    "type": "tile",
+                    "entity": "media_player.denon_avc_x4700h",
+                    "name": "Denon volume",
+                    "features": [
+                      {
+                        "type": "media-player-volume-slider"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "grid",
+                  "columns": 3,
+                  "square": false,
+                  "cards": [
+                    {
+                      "type": "button",
+                      "name": "Off",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "media_player.turn_off",
+                        "data": {},
+                        "target": {
+                          "entity_id": "media_player.denon_avc_x4700h"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "name": "TV",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.home_console_denon_source",
+                        "data": {
+                          "source": "TV Audio"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "name": "HEOS",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.home_console_denon_source",
+                        "data": {
+                          "source": "HEOS Music"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "vertical-stack",
+              "cards": [
+                {
+                  "type": "markdown",
+                  "content": "## 5 · Living-room LG TV"
+                },
+                {
+                  "type": "tile",
+                  "entity": "media_player.lg_webos_tv_oled83c36la",
+                  "name": "Living-room LG TV"
+                },
+                {
+                  "type": "grid",
+                  "columns": 3,
+                  "square": false,
+                  "cards": [
+                    {
+                      "type": "button",
+                      "name": "Off",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "media_player.turn_off",
+                        "data": {},
+                        "target": {
+                          "entity_id": "media_player.lg_webos_tv_oled83c36la"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "name": "PC · HDMI 1",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.home_console_tv_source",
+                        "data": {
+                          "source": "HDMI 1"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "name": "SHIELD · HDMI 4",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.home_console_tv_source",
+                        "data": {
+                          "source": "SHIELD Game Console"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "name": "Denon · HDMI 2",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.home_console_tv_source",
+                        "data": {
+                          "source": "Denon Sound Bar"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "name": "YouTube",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.home_console_tv_source",
+                        "data": {
+                          "source": "YouTube"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "name": "Plex",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.home_console_tv_source",
+                        "data": {
+                          "source": "Plex"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "name": "Netflix",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.home_console_tv_source",
+                        "data": {
+                          "source": "Netflix"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "name": "Apple TV",
+                      "show_state": false,
+                      "tap_action": {
+                        "action": "perform-action",
+                        "perform_action": "script.home_console_tv_source",
+                        "data": {
+                          "source": "Apple TV"
+                        }
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Now Playing",
+      "path": "now-playing",
+      "icon": "mdi:play-circle",
+      "panel": true,
+      "cards": [
+        {
+          "type": "vertical-stack",
+          "cards": [
+            {
+              "type": "entities",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_select.pi_console_player",
+                  "name": "Control room"
+                }
+              ]
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.denon_avc_x4700h_3"
+                }
+              ],
+              "card": {
+                "type": "vertical-stack",
+                "cards": [
+                  {
+                    "type": "media-control",
+                    "entity": "media_player.denon_avc_x4700h_3"
+                  },
+                  {
+                    "type": "conditional",
+                    "conditions": [
+                      {
+                        "condition": "state",
+                        "entity": "media_player.denon_avc_x4700h_3",
+                        "state_not": "off"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.denon_avc_x4700h_3",
+                        "state_not": "unknown"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.denon_avc_x4700h_3",
+                        "state_not": "unavailable"
+                      }
+                    ],
+                    "card": {
+                      "type": "tile",
+                      "entity": "media_player.denon_avc_x4700h_3",
+                      "name": "Volume · Denon AVC-X4700H",
+                      "features": [
+                        {
+                          "type": "media-player-volume-slider"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.bedroom_3"
+                }
+              ],
+              "card": {
+                "type": "vertical-stack",
+                "cards": [
+                  {
+                    "type": "media-control",
+                    "entity": "media_player.bedroom_3"
+                  },
+                  {
+                    "type": "conditional",
+                    "conditions": [
+                      {
+                        "condition": "state",
+                        "entity": "media_player.bedroom_3",
+                        "state_not": "off"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.bedroom_3",
+                        "state_not": "unknown"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.bedroom_3",
+                        "state_not": "unavailable"
+                      }
+                    ],
+                    "card": {
+                      "type": "tile",
+                      "entity": "media_player.bedroom_3",
+                      "name": "Volume · Bedroom · WiiM Ultra",
+                      "features": [
+                        {
+                          "type": "media-player-volume-slider"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.lg_tv_oled83c_2"
+                }
+              ],
+              "card": {
+                "type": "vertical-stack",
+                "cards": [
+                  {
+                    "type": "media-control",
+                    "entity": "media_player.lg_tv_oled83c_2"
+                  },
+                  {
+                    "type": "conditional",
+                    "conditions": [
+                      {
+                        "condition": "state",
+                        "entity": "media_player.lg_tv_oled83c_2",
+                        "state_not": "off"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.lg_tv_oled83c_2",
+                        "state_not": "unknown"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.lg_tv_oled83c_2",
+                        "state_not": "unavailable"
+                      }
+                    ],
+                    "card": {
+                      "type": "tile",
+                      "entity": "media_player.lg_tv_oled83c_2",
+                      "name": "Volume · Living room · LG TV",
+                      "features": [
+                        {
+                          "type": "media-player-volume-slider"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.shield_3"
+                }
+              ],
+              "card": {
+                "type": "vertical-stack",
+                "cards": [
+                  {
+                    "type": "media-control",
+                    "entity": "media_player.shield_3"
+                  },
+                  {
+                    "type": "conditional",
+                    "conditions": [
+                      {
+                        "condition": "state",
+                        "entity": "media_player.shield_3",
+                        "state_not": "off"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.shield_3",
+                        "state_not": "unknown"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.shield_3",
+                        "state_not": "unavailable"
+                      }
+                    ],
+                    "card": {
+                      "type": "tile",
+                      "entity": "media_player.shield_3",
+                      "name": "Volume · SHIELD",
+                      "features": [
+                        {
+                          "type": "media-player-volume-slider"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Music Library",
+      "path": "music-library",
+      "icon": "mdi:music-box-multiple",
+      "panel": true,
+      "cards": [
+        {
+          "type": "vertical-stack",
+          "cards": [
+            {
+              "type": "entities",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_select.pi_console_player",
+                  "name": "Control room"
+                }
+              ]
+            },
+            {
+              "type": "markdown",
+              "content": "Selected player: **{{ state_attr(states('input_select.pi_console_player'), 'friendly_name') or states('input_select.pi_console_player') }}** · **{{ states(states('input_select.pi_console_player')) }}**"
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.denon_avc_x4700h_3"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.denon_avc_x4700h_3",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.denon_avc_x4700h_3",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "custom:ma-browser-card",
+                  "config_entry_id": "01M5VRN82HETSZQ1F1PJGFZMGF",
+                  "ma_addon_slug": "d5369777_music_assistant",
+                  "players": [
+                    "media_player.denon_avc_x4700h_3"
+                  ],
+                  "default_player": "media_player.denon_avc_x4700h_3",
+                  "auto_follow": false,
+                  "use_app_area": false,
+                  "show_all_playing_players": false,
+                  "height": 430,
+                  "sidebar_position": "top",
+                  "show_title": false,
+                  "click_action": "browse"
+                }
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.bedroom_3"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.bedroom_3",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.bedroom_3",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "custom:ma-browser-card",
+                  "config_entry_id": "01M5VRN82HETSZQ1F1PJGFZMGF",
+                  "ma_addon_slug": "d5369777_music_assistant",
+                  "players": [
+                    "media_player.bedroom_3"
+                  ],
+                  "default_player": "media_player.bedroom_3",
+                  "auto_follow": false,
+                  "use_app_area": false,
+                  "show_all_playing_players": false,
+                  "height": 430,
+                  "sidebar_position": "top",
+                  "show_title": false,
+                  "click_action": "browse"
+                }
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.lg_tv_oled83c_2"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.lg_tv_oled83c_2",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.lg_tv_oled83c_2",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "custom:ma-browser-card",
+                  "config_entry_id": "01M5VRN82HETSZQ1F1PJGFZMGF",
+                  "ma_addon_slug": "d5369777_music_assistant",
+                  "players": [
+                    "media_player.lg_tv_oled83c_2"
+                  ],
+                  "default_player": "media_player.lg_tv_oled83c_2",
+                  "auto_follow": false,
+                  "use_app_area": false,
+                  "show_all_playing_players": false,
+                  "height": 430,
+                  "sidebar_position": "top",
+                  "show_title": false,
+                  "click_action": "browse"
+                }
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.shield_3"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.shield_3",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.shield_3",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "custom:ma-browser-card",
+                  "config_entry_id": "01M5VRN82HETSZQ1F1PJGFZMGF",
+                  "ma_addon_slug": "d5369777_music_assistant",
+                  "players": [
+                    "media_player.shield_3"
+                  ],
+                  "default_player": "media_player.shield_3",
+                  "auto_follow": false,
+                  "use_app_area": false,
+                  "show_all_playing_players": false,
+                  "height": 430,
+                  "sidebar_position": "top",
+                  "show_title": false,
+                  "click_action": "browse"
+                }
+              }
+            },
+            {
+              "type": "custom:home-console-queue",
+              "player_helper": "input_select.pi_console_player",
+              "player_map": {
+                "media_player.denon_avc_x4700h_3": "831600515",
+                "media_player.bedroom_3": "wiim_uuid:FF98F7F4-0EAC-0ED0-8BA0-CFDBFF98F7F4",
+                "media_player.lg_tv_oled83c_2": "up910adb7e",
+                "media_player.shield_3": "up72208666"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Players",
+      "path": "players",
+      "icon": "mdi:speaker-multiple",
+      "panel": true,
+      "cards": [
+        {
+          "type": "vertical-stack",
+          "cards": [
+            {
+              "type": "entities",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_select.pi_console_player",
+                  "name": "Control room"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "columns": 2,
+              "square": false,
+              "cards": [
+                {
+                  "type": "tile",
+                  "entity": "media_player.denon_avc_x4700h_3",
+                  "name": "Denon AVC-X4700H",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "icon_tap_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "tile",
+                  "entity": "media_player.bedroom_3",
+                  "name": "Bedroom · WiiM Ultra",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "icon_tap_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "tile",
+                  "entity": "media_player.lg_tv_oled83c_2",
+                  "name": "Living room · LG TV",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "icon_tap_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "tile",
+                  "entity": "media_player.shield_3",
+                  "name": "SHIELD",
+                  "tap_action": {
+                    "action": "none"
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  },
+                  "icon_tap_action": {
+                    "action": "none"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.denon_avc_x4700h_3"
+                }
+              ],
+              "card": {
+                "type": "media-control",
+                "entity": "media_player.denon_avc_x4700h_3"
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.bedroom_3"
+                }
+              ],
+              "card": {
+                "type": "media-control",
+                "entity": "media_player.bedroom_3"
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.lg_tv_oled83c_2"
+                }
+              ],
+              "card": {
+                "type": "media-control",
+                "entity": "media_player.lg_tv_oled83c_2"
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.shield_3"
+                }
+              ],
+              "card": {
+                "type": "media-control",
+                "entity": "media_player.shield_3"
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.denon_avc_x4700h_3"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.denon_avc_x4700h_3",
+                    "state_not": "off"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.denon_avc_x4700h_3",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.denon_avc_x4700h_3",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "tile",
+                  "entity": "media_player.denon_avc_x4700h_3",
+                  "name": "Volume · Denon AVC-X4700H",
+                  "features": [
+                    {
+                      "type": "media-player-volume-slider"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.bedroom_3"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.bedroom_3",
+                    "state_not": "off"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.bedroom_3",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.bedroom_3",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "tile",
+                  "entity": "media_player.bedroom_3",
+                  "name": "Volume · Bedroom · WiiM Ultra",
+                  "features": [
+                    {
+                      "type": "media-player-volume-slider"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.lg_tv_oled83c_2"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.lg_tv_oled83c_2",
+                    "state_not": "off"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.lg_tv_oled83c_2",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.lg_tv_oled83c_2",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "tile",
+                  "entity": "media_player.lg_tv_oled83c_2",
+                  "name": "Volume · Living room · LG TV",
+                  "features": [
+                    {
+                      "type": "media-player-volume-slider"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.shield_3"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.shield_3",
+                    "state_not": "off"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.shield_3",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.shield_3",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "tile",
+                  "entity": "media_player.shield_3",
+                  "name": "Volume · SHIELD",
+                  "features": [
+                    {
+                      "type": "media-player-volume-slider"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "entities",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_select.pi_console_transfer_source",
+                  "name": "Transfer from room"
+                }
+              ]
+            },
+            {
+              "type": "button",
+              "name": "Transfer playback to room",
+              "show_state": false,
+              "tap_action": {
+                "action": "perform-action",
+                "perform_action": "script.home_console_transfer",
+                "data": {},
+                "confirmation": {
+                  "text": "Move the active queue from Transfer from room to Control room?"
+                }
+              },
+              "hold_action": {
+                "action": "none"
+              }
+            },
+            {
+              "type": "markdown",
+              "content": "Changing Control room leaves existing playback in its original room. Transfer is a separate action; choose both rooms first."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Internet Radio",
+      "path": "radio",
+      "icon": "mdi:radio",
+      "panel": true,
+      "cards": [
+        {
+          "type": "vertical-stack",
+          "cards": [
+            {
+              "type": "entities",
+              "show_header_toggle": false,
+              "entities": [
+                {
+                  "entity": "input_select.pi_console_player",
+                  "name": "Control room"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "columns": 2,
+              "square": false,
+              "cards": [
+                {
+                  "type": "button",
+                  "name": "Radio Paradise",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_radio",
+                    "data": {
+                      "media_id": "library://radio/52"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Mellow Mix",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_radio",
+                    "data": {
+                      "media_id": "library://radio/53"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Global Mix",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_radio",
+                    "data": {
+                      "media_id": "library://radio/50"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Beyond…",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_radio",
+                    "data": {
+                      "media_id": "library://radio/49"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.denon_avc_x4700h_3"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.denon_avc_x4700h_3",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.denon_avc_x4700h_3",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "custom:ma-browser-card",
+                  "config_entry_id": "01M5VRN82HETSZQ1F1PJGFZMGF",
+                  "ma_addon_slug": "d5369777_music_assistant",
+                  "players": [
+                    "media_player.denon_avc_x4700h_3"
+                  ],
+                  "default_player": "media_player.denon_avc_x4700h_3",
+                  "auto_follow": false,
+                  "use_app_area": false,
+                  "show_all_playing_players": false,
+                  "height": 300,
+                  "sidebar_position": "top",
+                  "show_title": false,
+                  "click_action": "browse",
+                  "home_order": [
+                    "radio"
+                  ],
+                  "home_sections": {
+                    "radio": 100,
+                    "recently_played": 0,
+                    "recently_added": 0,
+                    "discover": 0
+                  }
+                }
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.bedroom_3"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.bedroom_3",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.bedroom_3",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "custom:ma-browser-card",
+                  "config_entry_id": "01M5VRN82HETSZQ1F1PJGFZMGF",
+                  "ma_addon_slug": "d5369777_music_assistant",
+                  "players": [
+                    "media_player.bedroom_3"
+                  ],
+                  "default_player": "media_player.bedroom_3",
+                  "auto_follow": false,
+                  "use_app_area": false,
+                  "show_all_playing_players": false,
+                  "height": 300,
+                  "sidebar_position": "top",
+                  "show_title": false,
+                  "click_action": "browse",
+                  "home_order": [
+                    "radio"
+                  ],
+                  "home_sections": {
+                    "radio": 100,
+                    "recently_played": 0,
+                    "recently_added": 0,
+                    "discover": 0
+                  }
+                }
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.lg_tv_oled83c_2"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.lg_tv_oled83c_2",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.lg_tv_oled83c_2",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "custom:ma-browser-card",
+                  "config_entry_id": "01M5VRN82HETSZQ1F1PJGFZMGF",
+                  "ma_addon_slug": "d5369777_music_assistant",
+                  "players": [
+                    "media_player.lg_tv_oled83c_2"
+                  ],
+                  "default_player": "media_player.lg_tv_oled83c_2",
+                  "auto_follow": false,
+                  "use_app_area": false,
+                  "show_all_playing_players": false,
+                  "height": 300,
+                  "sidebar_position": "top",
+                  "show_title": false,
+                  "click_action": "browse",
+                  "home_order": [
+                    "radio"
+                  ],
+                  "home_sections": {
+                    "radio": 100,
+                    "recently_played": 0,
+                    "recently_added": 0,
+                    "discover": 0
+                  }
+                }
+              }
+            },
+            {
+              "type": "conditional",
+              "conditions": [
+                {
+                  "condition": "state",
+                  "entity": "input_select.pi_console_player",
+                  "state": "media_player.shield_3"
+                }
+              ],
+              "card": {
+                "type": "conditional",
+                "conditions": [
+                  {
+                    "condition": "state",
+                    "entity": "media_player.shield_3",
+                    "state_not": "unknown"
+                  },
+                  {
+                    "condition": "state",
+                    "entity": "media_player.shield_3",
+                    "state_not": "unavailable"
+                  }
+                ],
+                "card": {
+                  "type": "custom:ma-browser-card",
+                  "config_entry_id": "01M5VRN82HETSZQ1F1PJGFZMGF",
+                  "ma_addon_slug": "d5369777_music_assistant",
+                  "players": [
+                    "media_player.shield_3"
+                  ],
+                  "default_player": "media_player.shield_3",
+                  "auto_follow": false,
+                  "use_app_area": false,
+                  "show_all_playing_players": false,
+                  "height": 300,
+                  "sidebar_position": "top",
+                  "show_title": false,
+                  "click_action": "browse",
+                  "home_order": [
+                    "radio"
+                  ],
+                  "home_sections": {
+                    "radio": 100,
+                    "recently_played": 0,
+                    "recently_added": 0,
+                    "discover": 0
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

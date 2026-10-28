@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UPS Network Adapter - Kiosk</title>
+<style>
+:root {
+  --bg: #15181d;
+  --card-bg: #20262f;
+  --card-border: #455062;
+  --text: #eef2f8;
+  --text-muted: #8c9ba5;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --success: #16a34a;
+  --warning: #d97706;
+  --bar-bg: #2d3748;
+}
+
+[data-theme="light"] {
+  --bg: #f3f5f8;
+  --card-bg: #ffffff;
+  --card-border: #ccd4df;
+  --text: #18202c;
+  --text-muted: #556070;
+  --primary: #2359b8;
+  --primary-hover: #1b4796;
+  --bar-bg: #e2e8f0;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Touchscreen top header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--card-border);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(22, 163, 74, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.status-badge.on-battery {
+  background: rgba(217, 119, 6, 0.15);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.status-badge.on-battery .status-dot { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+
+.status-badge.offline {
+  background: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.status-badge.offline .status-dot { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  min-height: 40px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+
+.btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+.btn:active, .btn:hover {
+  filter: brightness(1.15);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border-color: transparent;
+}
+
+.btn-warning {
+  background: var(--warning);
+  color: white;
+  border-color: transparent;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  border-color: transparent;
+}
+
+/* Dashboard Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.card-title {
+  margin: 0 0 12px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 8px;
+}
+
+.card-title svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--primary);
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  font-size: 0.95rem;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.stat-val {
+  font-weight: 600;
+  text-align: right;
+}
+
+.highlight-val {
+  font-size: 1.3rem;
+  font-weight: 750;
+  color: var(--primary);
+}
+
+.bar-container {
+  width: 100%;
+  height: 8px;
+  background: var(--bar-bg);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.bar-fill.bar-success { background: #22c55e; }
+.bar-fill.bar-warning { background: #f59e0b; }
+.bar-fill.bar-danger { background: #ef4444; }
+
+/* Modal Styles */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  max-width: 460px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  text-align: center;
+}
+
+.modal-title {
+  margin: 0 0 12px 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.modal-msg {
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-btn {
+  flex: 1;
+  min-height: 48px;
+  font-size: 1rem;
+}
+
+/* Spinner Overlay for execution */
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="brand-section">
+    <svg style="width:24px;height:24px;stroke:#eab308;fill:none;stroke-width:2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+    <span class="brand-title" data-i18n="brand_title">UPS Adapter Kiosk</span>
+    <div id="statusBadge" class="status-badge">
+      <span class="status-dot"></span>
+      <span id="statusText" data-i18n="status_online">Online</span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <a id="peanutLink" href="http://{{host}}:8080/device/ups" class="btn btn-primary">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"></path></svg>
+      <span data-i18n="peanut_btn">PeaNUT Dashboard</span>
+    </a>
+    <button id="themeToggle" class="btn" type="button">
+      <svg id="themeIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      <span data-i18n="theme_btn">Theme</span>
+    </button>
+    <button id="langToggle" class="btn" type="button">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+      <span id="langText">RU</span>
+    </button>
+    <button id="restartBtn" class="btn btn-warning" type="button">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+      <span data-i18n="restart_btn">Restart</span>
+    </button>
+    <button id="shutdownBtn" class="btn btn-danger" type="button">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.36 6.64a9 9 0 11-12.73 0M12 2v10"></path></svg>
+      <span data-i18n="shutdown_btn">Shutdown</span>
+    </button>
+  </div>
+</header>
+
+<main class="grid">
+  <!-- Card 1: UPS Status -->
+  <section class="card">
+    <h2 class="card-title">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="6" width="18" height="12" rx="2"></rect><line x1="23" y1="10" x2="23" y2="14"></line></svg>
+      <span data-i18n="ups_card_title">UPS Status</span>
+    </h2>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="model_label">Model</span>
+      <span class="stat-val" id="upsModel">Loading…</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="load_label">Current Load</span>
+      <span class="stat-val highlight-val" id="upsLoad">0 W</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="charge_label">Battery Charge</span>
+      <div style="text-align: right; width: 60%;">
+        <span class="stat-val" id="batteryChargeText">100%</span>
+        <div class="bar-container">
+          <div id="batteryBar" class="bar-fill bar-success" style="width: 100%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="runtime_label">Estimated Runtime</span>
+      <span class="stat-val" id="batteryRuntime">--:--</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="input_volt_label">Input Voltage</span>
+      <span class="stat-val" id="inputVoltage">-- V</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="batt_volt_label">Battery Voltage</span>
+      <span class="stat-val" id="batteryVoltage">-- V</span>
+    </div>
+  </section>
+
+  <!-- Card 2: System Health -->
+  <section class="card">
+    <h2 class="card-title">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+      <span data-i18n="sys_card_title">System Health</span>
+    </h2>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="uptime_label">Uptime</span>
+      <span class="stat-val" id="sysUptime">--</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="cpu_temp_label">CPU Temperature</span>
+      <span class="stat-val" id="cpuTemp">-- °C</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="ram_label">Memory (RAM)</span>
+      <div style="text-align: right; width: 60%;">
+        <span class="stat-val" id="ramText">--</span>
+        <div class="bar-container">
+          <div id="ramBar" class="bar-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="disk_label">Disk Storage</span>
+      <div style="text-align: right; width: 60%;">
+        <span class="stat-val" id="diskText">--</span>
+        <div class="bar-container">
+          <div id="diskBar" class="bar-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Card 3: Network Information -->
+  <section class="card">
+    <h2 class="card-title">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"></rect><rect x="2" y="14" width="20" height="8" rx="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+      <span data-i18n="net_card_title">Network Information</span>
+    </h2>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="hostname_label">Hostname</span>
+      <span class="stat-val" id="netHostname">--</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="ip_label">IPv4 Address</span>
+      <span class="stat-val" id="netIp">--</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="gateway_label">Default Gateway</span>
+      <span class="stat-val" id="netGateway">--</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="mac_label">MAC Address</span>
+      <span class="stat-val" id="netMac">--</span>
+    </div>
+
+    <div class="stat-row">
+      <span class="stat-label" data-i18n="iface_label">Interface</span>
+      <span class="stat-val" id="netInterface">--</span>
+    </div>
+  </section>
+</main>
+
+<!-- Confirmation Modal -->
+<div id="modalOverlay" class="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modalTitle" class="modal-title">Confirm Action</h3>
+    <p id="modalMsg" class="modal-msg">Are you sure?</p>
+    <div id="modalControls" class="modal-actions">
+      <button id="modalCancel" type="button" class="btn modal-btn" data-i18n="cancel_btn">Cancel</button>
+      <button id="modalConfirm" type="button" class="btn btn-primary modal-btn" data-i18n="confirm_btn">Confirm</button>
+    </div>
+    <div id="modalExecuting" style="display: none;">
+      <div class="spinner"></div>
+      <p id="modalExecMsg" style="font-weight: 600; margin: 0;"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+let csrfToken = "{{csrf}}";
+let currentLang = localStorage.getItem('kiosk-lang') || 'en';
+let currentTheme = localStorage.getItem('kiosk-theme') || 'dark';
+
+const i18n = {
+  en: {
+    brand_title: "UPS Adapter Kiosk",
+    peanut_btn: "PeaNUT Dashboard",
+    theme_btn: "Theme",
+    restart_btn: "Restart",
+    shutdown_btn: "Shutdown",
+    ups_card_title: "UPS Status",
+    sys_card_title: "System Health",
+    net_card_title: "Network Information",
+    model_label: "Model",
+    load_label: "Current Load",
+    charge_label: "Battery Charge",
+    runtime_label: "Estimated Runtime",
+    input_volt_label: "Input Voltage",
+    batt_volt_label: "Battery Voltage",
+    uptime_label: "Uptime",
+    cpu_temp_label: "CPU Temperature",
+    ram_label: "Memory (RAM)",
+    disk_label: "Disk Storage",
+    hostname_label: "Hostname",
+    ip_label: "IPv4 Address",
+    gateway_label: "Default Gateway",
+    mac_label: "MAC Address",
+    iface_label: "Interface",
+    cancel_btn: "Cancel",
+    confirm_btn: "Confirm",
+    status_online: "Online",
+    status_battery: "On Battery",
+    status_offline: "Offline",
+    restart_confirm_title: "Restart System?",
+    restart_confirm_msg: "The Raspberry Pi will reboot. Web and network services will be offline for 30–60 seconds.",
+    shutdown_confirm_title: "Shutdown System?",
+    shutdown_confirm_msg: "The system will safely power off. To turn it back on, you must physically reconnect the power cable.",
+    restarting_title: "Restarting System…",
+    restarting_msg: "The adapter is rebooting now. Reconnecting shortly…",
+    shutting_down_title: "System Shutting Down…",
+    shutting_down_msg: "System has halted. It is now safe to disconnect power."
+  },
+  ru: {
+    brand_title: "Киоск адаптера ИБП",
+    peanut_btn: "Панель PeaNUT",
+    theme_btn: "Тема",
+    restart_btn: "Перезагрузка",
+    shutdown_btn: "Выключение",
+    ups_card_title: "Состояние ИБП",
+    sys_card_title: "Здоровье системы",
+    net_card_title: "Информация о сети",
+    model_label: "Модель",
+    load_label: "Текущая нагрузка",
+    charge_label: "Заряд батареи",
+    runtime_label: "Время работы",
+    input_volt_label: "Входное напряжение",
+    batt_volt_label: "Напряжение батареи",
+    uptime_label: "Время работы",
+    cpu_temp_label: "Температура CPU",
+    ram_label: "Оперативная память",
+    disk_label: "Дисковое пространство",
+    hostname_label: "Имя хоста",
+    ip_label: "IPv4 адрес",
+    gateway_label: "Основной шлюз",
+    mac_label: "MAC адрес",
+    iface_label: "Интерфейс",
+    cancel_btn: "Отмена",
+    confirm_btn: "Подтвердить",
+    status_online: "В сети",
+    status_battery: "От батареи",
+    status_offline: "Не в сети",
+    restart_confirm_title: "Перезагрузить систему?",
+    restart_confirm_msg: "Raspberry Pi будет перезагружен. Сетевые службы будут недоступны 30–60 секунд.",
+    shutdown_confirm_title: "Выключить систему?",
+    shutdown_confirm_msg: "Система безопасно отключится. Чтобы включить её снова, потребуется физически переподключить кабель питания.",
+    restarting_title: "Перезагрузка системы…",
+    restarting_msg: "Адаптер перезагружается. Попытка переподключения через 45 сек…",
+    shutting_down_title: "Выключение системы…",
+    shutting_down_msg: "Работа системы завершена. Теперь безопасно отключить питание."
+  }
+};
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('kiosk-theme', theme);
+}
+
+function applyLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('kiosk-lang', lang);
+  document.getElementById('langText').textContent = lang === 'en' ? 'RU' : 'EN';
+  const dict = i18n[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) el.textContent = dict[key];
+  });
+}
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
+
+document.getElementById('langToggle').addEventListener('click', () => {
+  applyLang(currentLang === 'en' ? 'ru' : 'en');
+});
+
+// Auto-detect Peanut host
+const currentHost = window.location.hostname || '127.0.0.1';
+document.getElementById('peanutLink').href = window.location.protocol + '//' + currentHost + ':8080/device/ups';
+
+// Data polling
+async function updateMetrics() {
+  try {
+    const res = await fetch('/api/kiosk-data');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.csrf) csrfToken = data.csrf;
+
+    // UPS Status
+    const badge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const ups = data.ups || {};
+
+    if (ups.status === 'OL') {
+      badge.className = 'status-badge';
+      statusText.textContent = i18n[currentLang].status_online;
+    } else if (ups.status === 'OB') {
+      badge.className = 'status-badge on-battery';
+      statusText.textContent = i18n[currentLang].status_battery;
+    } else {
+      badge.className = 'status-badge offline';
+      statusText.textContent = ups.status || i18n[currentLang].status_offline;
+    }
+
+    document.getElementById('upsModel').textContent = (ups.mfr ? ups.mfr + ' ' : '') + (ups.model || 'Unknown');
+    document.getElementById('upsLoad').textContent = (ups.load_watts !== undefined ? ups.load_watts + ' W' : '0 W') + ' (' + (ups.load_percent || 0) + '%)';
+
+    const charge = ups.battery_charge !== undefined ? ups.battery_charge : 100;
+    document.getElementById('batteryChargeText').textContent = charge + '%';
+    const bar = document.getElementById('batteryBar');
+    bar.style.width = charge + '%';
+    if (charge <= 25) { bar.className = 'bar-fill bar-danger'; }
+    else if (charge <= 50) { bar.className = 'bar-fill bar-warning'; }
+    else { bar.className = 'bar-fill bar-success'; }
+
+    document.getElementById('batteryRuntime').textContent = ups.battery_runtime_formatted || '--:--';
+    document.getElementById('inputVoltage').textContent = (ups.input_voltage || '--') + ' V';
+    document.getElementById('batteryVoltage').textContent = (ups.battery_voltage || '--') + ' V';
+
+    // System Health
+    const sys = data.system || {};
+    document.getElementById('sysUptime').textContent = sys.uptime_formatted || '--';
+    document.getElementById('cpuTemp').textContent = sys.cpu_temp !== null && sys.cpu_temp !== undefined ? sys.cpu_temp + ' °C' : '--';
+
+    document.getElementById('ramText').textContent = (sys.memory_used_mb || 0) + ' / ' + (sys.memory_total_mb || 0) + ' MB (' + (sys.memory_percent || 0) + '%)';
+    document.getElementById('ramBar').style.width = (sys.memory_percent || 0) + '%';
+
+    document.getElementById('diskText').textContent = (sys.disk_used_gb || 0) + ' / ' + (sys.disk_total_gb || 0) + ' GB (' + (sys.disk_percent || 0) + '%)';
+    document.getElementById('diskBar').style.width = (sys.disk_percent || 0) + '%';
+
+    // Network Info
+    const net = data.network || {};
+    document.getElementById('netHostname').textContent = net.hostname || '--';
+    document.getElementById('netIp').textContent = net.ip ? (net.ip + (net.prefix ? '/' + net.prefix : '')) : '--';
+    document.getElementById('netGateway').textContent = net.gateway || '--';
+    document.getElementById('netMac').textContent = net.mac || '--';
+    document.getElementById('netInterface').textContent = net.interface || '--';
+  } catch (err) {
+    console.error('Polling error:', err);
+  }
+}
+
+// Action Modals
+let pendingAction = null;
+const modal = document.getElementById('modalOverlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalMsg = document.getElementById('modalMsg');
+const modalConfirm = document.getElementById('modalConfirm');
+const modalCancel = document.getElementById('modalCancel');
+const modalControls = document.getElementById('modalControls');
+const modalExecuting = document.getElementById('modalExecuting');
+const modalExecMsg = document.getElementById('modalExecMsg');
+
+function openModal(action) {
+  pendingAction = action;
+  const dict = i18n[currentLang];
+  if (action === 'restart') {
+    modalTitle.textContent = dict.restart_confirm_title;
+    modalMsg.textContent = dict.restart_confirm_msg;
+    modalConfirm.className = 'btn btn-warning modal-btn';
+  } else {
+    modalTitle.textContent = dict.shutdown_confirm_title;
+    modalMsg.textContent = dict.shutdown_confirm_msg;
+    modalConfirm.className = 'btn btn-danger modal-btn';
+  }
+  modalControls.style.display = 'flex';
+  modalExecuting.style.display = 'none';
+  modal.classList.add('active');
+}
+
+function closeModal() {
+  modal.classList.remove('active');
+  pendingAction = null;
+}
+
+modalCancel.addEventListener('click', closeModal);
+
+modalConfirm.addEventListener('click', async () => {
+  if (!pendingAction) return;
+  const action = pendingAction;
+  const dict = i18n[currentLang];
+  modalControls.style.display = 'none';
+  modalExecuting.style.display = 'block';
+  modalExecMsg.textContent = action === 'restart' ? dict.restarting_title : dict.shutting_down_title;
+
+  try {
+    const formData = new URLSearchParams();
+    formData.append('csrf', csrfToken);
+    formData.append('action', action);
+    await fetch('/kiosk/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData.toString()
+    });
+  } catch (e) {
+    // Expected when server halts
+  }
+
+  if (action === 'restart') {
+    modalMsg.textContent = dict.restarting_msg;
+    setTimeout(() => { window.location.reload(); }, 45000);
+  } else {
+    modalMsg.textContent = dict.shutting_down_msg;
+  }
+});
+
+document.getElementById('restartBtn').addEventListener('click', () => openModal('restart'));
+document.getElementById('shutdownBtn').addEventListener('click', () => openModal('shutdown'));
+
+// Initial setup
+applyTheme(currentTheme);
+applyLang(currentLang);
+updateMetrics();
+setInterval(updateMetrics, 3000);
+</script>
+</body>
+</html>
