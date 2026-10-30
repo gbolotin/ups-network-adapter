@@ -1,0 +1,7 @@
+{
+  "config": {
+    "step": {"user": {"title": "USB UPS Adapter", "description": "One active USB UPS behind a stable NUT endpoint. Devices without a serial number are identified by manufacturer and model. Optional migration preserves existing NUT entity IDs and history.", "data": {"host": "NUT host", "port": "NUT port", "alias": "UPS alias", "legacy_entry": "Existing NUT config entry ID (optional migration)"}}},
+    "error": {"cannot_connect": "Cannot read UPS identity from NUT"},
+    "abort": {"already_configured": "This adapter is already configured"}
+  }
+}

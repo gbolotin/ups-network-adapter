@@ -9,406 +9,830 @@
   },
   "views": [
     {
-      "title": "UPS",
-      "path": "ups",
-      "icon": "mdi:power-plug-battery",
-      "panel": true,
-      "cards": [
-        {
-          "type": "vertical-stack",
-          "cards": [
-            {
-              "type": "markdown",
-              "content": "## UPS\nStatus: **{{ states('sensor.ups_apc_status') }}** · NUT: **{{ states('sensor.ups_apc_status_data') }}**"
-            },
-            {
-              "type": "grid",
-              "columns": 3,
-              "square": false,
-              "cards": [
-                {
-                  "type": "tile",
-                  "entity": "sensor.ups_apc_battery_charge",
-                  "name": "Battery charge"
-                },
-                {
-                  "type": "tile",
-                  "entity": "sensor.ups_apc_load",
-                  "name": "Load"
-                },
-                {
-                  "type": "tile",
-                  "entity": "sensor.ups_apc_input_voltage",
-                  "name": "Input voltage"
-                },
-                {
-                  "type": "tile",
-                  "entity": "sensor.ups_battery_runtime",
-                  "name": "Battery runtime"
-                },
-                {
-                  "type": "tile",
-                  "entity": "sensor.ups_battery_voltage",
-                  "name": "Battery voltage"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
       "title": "Home",
       "path": "home",
       "icon": "mdi:home",
       "panel": true,
       "cards": [
         {
-          "type": "vertical-stack",
-          "cards": [
-            {
-              "type": "markdown",
-              "content": "## 1 · Lock Ultra 17\nState: **{{ states('lock.lock_ultra_17') }}**\n\nBattery: **{{ states('sensor.lock_ultra_17_battery') }}** {{ state_attr('sensor.lock_ultra_17_battery', 'unit_of_measurement') or '' }}"
-            },
-            {
-              "type": "vertical-stack",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "## 2 · Aquarium · Office"
-                },
-                {
-                  "type": "grid",
-                  "columns": 2,
-                  "square": false,
-                  "cards": [
-                    {
+          "type": "custom:home-console-home-layout",
+          "card": {
+            "type": "vertical-stack",
+            "cards": [
+              {
+                "type": "grid",
+                "columns": 2,
+                "square": false,
+                "cards": [
+                  {
+                    "type": "custom:home-console-door-card",
+                    "card": {
                       "type": "tile",
-                      "entity": "switch.power_plug_cd43",
-                      "name": "Aquarium outlet",
+                      "entity": "lock.lock_ultra_17",
+                      "name": "Front door",
                       "tap_action": {
-                        "action": "toggle"
-                      }
+                        "action": "more-info"
+                      },
+                      "icon_tap_action": {
+                        "action": "more-info"
+                      },
+                      "hold_action": {
+                        "action": "none"
+                      },
+                      "double_tap_action": {
+                        "action": "none"
+                      },
+                      "icon_hold_action": {
+                        "action": "none"
+                      },
+                      "icon_double_tap_action": {
+                        "action": "none"
+                      },
+                      "features": [
+                        {
+                          "type": "lock-commands"
+                        }
+                      ]
                     },
-                    {
+                    "battery": {
                       "type": "tile",
-                      "entity": "sensor.power_plug_cd43_power",
-                      "name": "Measured power"
+                      "entity": "sensor.lock_ultra_17_battery",
+                      "name": "Battery"
                     }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "vertical-stack",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "## 3 · Xiaomi C400 · Living room"
-                },
-                {
-                  "type": "grid",
-                  "columns": 3,
-                  "square": false,
-                  "cards": [
-                    {
-                      "type": "tile",
-                      "entity": "switch.chuangmi_sg_1069362690_039c04_on_p_2_1",
-                      "name": "Camera power",
-                      "tap_action": {
-                        "action": "toggle"
-                      }
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "switch.chuangmi_sg_1069362690_039c04_motion_detection_p_5_1",
-                      "name": "Motion detection",
-                      "tap_action": {
-                        "action": "toggle"
-                      }
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "switch.chuangmi_sg_1069362690_039c04_human_tracking_p_2_9",
-                      "name": "Human tracking",
-                      "tap_action": {
-                        "action": "toggle"
-                      }
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "vertical-stack",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "## 4 · Denon AVC-X4700H"
-                },
-                {
-                  "type": "media-control",
-                  "entity": "media_player.denon_avc_x4700h"
-                },
-                {
-                  "type": "conditional",
-                  "conditions": [
-                    {
-                      "condition": "state",
-                      "entity": "media_player.denon_avc_x4700h",
-                      "state_not": "off"
-                    },
-                    {
-                      "condition": "state",
-                      "entity": "media_player.denon_avc_x4700h",
-                      "state_not": "unknown"
-                    },
-                    {
-                      "condition": "state",
-                      "entity": "media_player.denon_avc_x4700h",
-                      "state_not": "unavailable"
-                    }
-                  ],
-                  "card": {
+                  },
+                  {
                     "type": "tile",
-                    "entity": "media_player.denon_avc_x4700h",
-                    "name": "Denon volume",
-                    "features": [
+                    "entity": "switch.power_plug_cd43",
+                    "name": "Aquarium outlet",
+                    "tap_action": {
+                      "action": "toggle"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "vertical-stack",
+                "cards": [
+                  {
+                    "type": "grid",
+                    "columns": 3,
+                    "square": false,
+                    "cards": [
                       {
-                        "type": "media-player-volume-slider"
+                        "type": "tile",
+                        "entity": "switch.chuangmi_sg_1069362690_039c04_on_p_2_1",
+                        "name": "Camera power",
+                        "tap_action": {
+                          "action": "toggle"
+                        }
+                      },
+                      {
+                        "type": "tile",
+                        "entity": "switch.chuangmi_sg_1069362690_039c04_motion_detection_p_5_1",
+                        "name": "Motion detection",
+                        "tap_action": {
+                          "action": "toggle"
+                        }
+                      },
+                      {
+                        "type": "tile",
+                        "entity": "switch.chuangmi_sg_1069362690_039c04_human_tracking_p_2_9",
+                        "name": "Human tracking",
+                        "tap_action": {
+                          "action": "toggle"
+                        }
                       }
                     ]
                   }
-                },
-                {
-                  "type": "grid",
-                  "columns": 3,
-                  "square": false,
-                  "cards": [
-                    {
-                      "type": "button",
-                      "name": "Off",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "media_player.turn_off",
-                        "data": {},
-                        "target": {
-                          "entity_id": "media_player.denon_avc_x4700h"
+                ]
+              },
+              {
+                "type": "grid",
+                "columns": 8,
+                "square": false,
+                "cards": [
+                  {
+                    "type": "vertical-stack",
+                    "cards": [
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'HDMI 1' }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": true,
+                          "icon_color": "#90caf9",
+                          "tooltip": "Компьютер",
+                          "card": {
+                            "type": "button",
+                            "name": "PC",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "HDMI 1"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:desktop-classic",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
                         }
                       },
-                      "hold_action": {
-                        "action": "none"
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ not (states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'HDMI 1') }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": false,
+                          "icon_color": "#90caf9",
+                          "tooltip": "Компьютер",
+                          "card": {
+                            "type": "button",
+                            "name": "PC",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "HDMI 1"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:desktop-classic",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
                       }
-                    },
-                    {
-                      "type": "button",
-                      "name": "TV",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.home_console_denon_source",
-                        "data": {
-                          "source": "TV Audio"
+                    ]
+                  },
+                  {
+                    "type": "vertical-stack",
+                    "cards": [
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'SHIELD Game Console' }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": true,
+                          "icon_color": "#76b900",
+                          "tooltip": "NVIDIA SHIELD",
+                          "card": {
+                            "type": "button",
+                            "name": "SHIELD",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "SHIELD Game Console"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:shield",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          },
+                          "logo": "nvidia"
                         }
                       },
-                      "hold_action": {
-                        "action": "none"
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ not (states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'SHIELD Game Console') }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": false,
+                          "icon_color": "#76b900",
+                          "tooltip": "NVIDIA SHIELD",
+                          "card": {
+                            "type": "button",
+                            "name": "SHIELD",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "SHIELD Game Console"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:shield",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          },
+                          "logo": "nvidia"
+                        }
                       }
-                    },
-                    {
-                      "type": "button",
-                      "name": "HEOS",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.home_console_denon_source",
-                        "data": {
-                          "source": "HEOS Music"
+                    ]
+                  },
+                  {
+                    "type": "vertical-stack",
+                    "cards": [
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'Denon Sound Bar' }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": true,
+                          "icon_color": "#ffb74d",
+                          "tooltip": "Ресивер Denon",
+                          "card": {
+                            "type": "button",
+                            "name": "Denon",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "Denon Sound Bar"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:audio-video",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
                         }
                       },
-                      "hold_action": {
-                        "action": "none"
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ not (states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'Denon Sound Bar') }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": false,
+                          "icon_color": "#ffb74d",
+                          "tooltip": "Ресивер Denon",
+                          "card": {
+                            "type": "button",
+                            "name": "Denon",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "Denon Sound Bar"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:audio-video",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
                       }
+                    ]
+                  },
+                  {
+                    "type": "vertical-stack",
+                    "cards": [
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'YouTube' }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": true,
+                          "icon_color": "#ff0000",
+                          "tooltip": "YouTube",
+                          "card": {
+                            "type": "button",
+                            "name": "YouTube",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "YouTube"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:youtube",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      },
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ not (states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'YouTube') }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": false,
+                          "icon_color": "#ff0000",
+                          "tooltip": "YouTube",
+                          "card": {
+                            "type": "button",
+                            "name": "YouTube",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "YouTube"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:youtube",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "vertical-stack",
+                    "cards": [
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'Plex' }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": true,
+                          "icon_color": "#e5a00d",
+                          "tooltip": "Plex",
+                          "card": {
+                            "type": "button",
+                            "name": "Plex",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "Plex"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:plex",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      },
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ not (states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'Plex') }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": false,
+                          "icon_color": "#e5a00d",
+                          "tooltip": "Plex",
+                          "card": {
+                            "type": "button",
+                            "name": "Plex",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "Plex"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:plex",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "vertical-stack",
+                    "cards": [
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'Netflix' }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": true,
+                          "icon_color": "#e50914",
+                          "tooltip": "Netflix",
+                          "card": {
+                            "type": "button",
+                            "name": "Netflix",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "Netflix"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:netflix",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      },
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ not (states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'Netflix') }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": false,
+                          "icon_color": "#e50914",
+                          "tooltip": "Netflix",
+                          "card": {
+                            "type": "button",
+                            "name": "Netflix",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "Netflix"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:netflix",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "vertical-stack",
+                    "cards": [
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'Apple TV' }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": true,
+                          "icon_color": "#f5f5f5",
+                          "tooltip": "Apple TV",
+                          "card": {
+                            "type": "button",
+                            "name": "Apple TV",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "Apple TV"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:apple",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      },
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ not (states('media_player.lg_webos_tv_oled83c36la') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.lg_webos_tv_oled83c36la', 'source') == 'Apple TV') }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": false,
+                          "icon_color": "#f5f5f5",
+                          "tooltip": "Apple TV",
+                          "card": {
+                            "type": "button",
+                            "name": "Apple TV",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "script.home_console_tv_source",
+                              "data": {
+                                "source": "Apple TV"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:apple",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "vertical-stack",
+                    "cards": [
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ is_state('media_player.lg_webos_tv_oled83c36la', 'off') }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": true,
+                          "icon_color": "#ef5350",
+                          "tooltip": "Выключить",
+                          "card": {
+                            "type": "button",
+                            "name": "Off",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "media_player.turn_off",
+                              "data": {},
+                              "target": {
+                                "entity_id": "media_player.lg_webos_tv_oled83c36la"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:television-off",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      },
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ not (is_state('media_player.lg_webos_tv_oled83c36la', 'off')) }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": false,
+                          "icon_color": "#ef5350",
+                          "tooltip": "Выключить",
+                          "card": {
+                            "type": "button",
+                            "name": "Off",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "media_player.turn_off",
+                              "data": {},
+                              "target": {
+                                "entity_id": "media_player.lg_webos_tv_oled83c36la"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:television-off",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "custom:home-console-receiver-controls",
+                "cards": [
+                  {
+                    "type": "conditional",
+                    "conditions": [
+                      {
+                        "condition": "state",
+                        "entity": "media_player.denon_avc_x4700h",
+                        "state_not": "off"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.denon_avc_x4700h",
+                        "state_not": "unknown"
+                      },
+                      {
+                        "condition": "state",
+                        "entity": "media_player.denon_avc_x4700h",
+                        "state_not": "unavailable"
+                      }
+                    ],
+                    "card": {
+                      "type": "custom:home-console-volume-slider",
+                      "card": {
+                        "type": "tile",
+                        "entity": "media_player.denon_avc_x4700h",
+                        "name": "Denon volume",
+                        "features": [
+                          {
+                            "type": "media-player-volume-slider"
+                          }
+                        ]
+                      },
+                      "hide_mute": false
                     }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "vertical-stack",
-              "cards": [
-                {
-                  "type": "markdown",
-                  "content": "## 5 · Living-room LG TV"
-                },
-                {
-                  "type": "tile",
-                  "entity": "media_player.lg_webos_tv_oled83c36la",
-                  "name": "Living-room LG TV"
-                },
-                {
-                  "type": "grid",
-                  "columns": 3,
-                  "square": false,
-                  "cards": [
-                    {
-                      "type": "button",
-                      "name": "Off",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "media_player.turn_off",
-                        "data": {},
-                        "target": {
-                          "entity_id": "media_player.lg_webos_tv_oled83c36la"
+                  },
+                  {
+                    "type": "vertical-stack",
+                    "cards": [
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ is_state('media_player.denon_avc_x4700h', 'off') }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": true,
+                          "icon_color": "#ef5350",
+                          "tooltip": "Вкл/выкл ресивера",
+                          "card": {
+                            "type": "button",
+                            "name": "Receiver power",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "media_player.toggle",
+                              "data": {},
+                              "target": {
+                                "entity_id": "media_player.denon_avc_x4700h"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:audio-video",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          },
+                          "logo": "receiver-off"
                         }
                       },
-                      "hold_action": {
-                        "action": "none"
-                      }
-                    },
-                    {
-                      "type": "button",
-                      "name": "PC · HDMI 1",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.home_console_tv_source",
-                        "data": {
-                          "source": "HDMI 1"
+                      {
+                        "type": "conditional",
+                        "conditions": [
+                          {
+                            "condition": "template",
+                            "value_template": "{{ not (is_state('media_player.denon_avc_x4700h', 'off')) }}"
+                          }
+                        ],
+                        "card": {
+                          "type": "custom:home-console-active-button",
+                          "active": false,
+                          "icon_color": "#ef5350",
+                          "tooltip": "Вкл/выкл ресивера",
+                          "card": {
+                            "type": "button",
+                            "name": "Receiver power",
+                            "show_state": false,
+                            "tap_action": {
+                              "action": "perform-action",
+                              "perform_action": "media_player.toggle",
+                              "data": {},
+                              "target": {
+                                "entity_id": "media_player.denon_avc_x4700h"
+                              }
+                            },
+                            "hold_action": {
+                              "action": "none"
+                            },
+                            "icon": "mdi:audio-video",
+                            "show_name": false,
+                            "show_icon": true,
+                            "icon_height": "28px"
+                          },
+                          "logo": "receiver-off"
                         }
-                      },
-                      "hold_action": {
-                        "action": "none"
                       }
-                    },
-                    {
-                      "type": "button",
-                      "name": "SHIELD · HDMI 4",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.home_console_tv_source",
-                        "data": {
-                          "source": "SHIELD Game Console"
-                        }
-                      },
-                      "hold_action": {
-                        "action": "none"
-                      }
-                    },
-                    {
-                      "type": "button",
-                      "name": "Denon · HDMI 2",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.home_console_tv_source",
-                        "data": {
-                          "source": "Denon Sound Bar"
-                        }
-                      },
-                      "hold_action": {
-                        "action": "none"
-                      }
-                    },
-                    {
-                      "type": "button",
-                      "name": "YouTube",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.home_console_tv_source",
-                        "data": {
-                          "source": "YouTube"
-                        }
-                      },
-                      "hold_action": {
-                        "action": "none"
-                      }
-                    },
-                    {
-                      "type": "button",
-                      "name": "Plex",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.home_console_tv_source",
-                        "data": {
-                          "source": "Plex"
-                        }
-                      },
-                      "hold_action": {
-                        "action": "none"
-                      }
-                    },
-                    {
-                      "type": "button",
-                      "name": "Netflix",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.home_console_tv_source",
-                        "data": {
-                          "source": "Netflix"
-                        }
-                      },
-                      "hold_action": {
-                        "action": "none"
-                      }
-                    },
-                    {
-                      "type": "button",
-                      "name": "Apple TV",
-                      "show_state": false,
-                      "tap_action": {
-                        "action": "perform-action",
-                        "perform_action": "script.home_console_tv_source",
-                        "data": {
-                          "source": "Apple TV"
-                        }
-                      },
-                      "hold_action": {
-                        "action": "none"
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
         }
       ]
     },
     {
-      "title": "Now Playing",
-      "path": "now-playing",
-      "icon": "mdi:play-circle",
+      "title": "Receiver",
+      "path": "receiver",
+      "icon": "mdi:audio-video",
       "panel": true,
       "cards": [
         {
           "type": "vertical-stack",
           "cards": [
             {
-              "type": "entities",
-              "show_header_toggle": false,
-              "entities": [
-                {
-                  "entity": "input_select.pi_console_player",
-                  "name": "Control room"
-                }
-              ]
-            },
-            {
-              "type": "conditional",
-              "conditions": [
-                {
-                  "condition": "state",
-                  "entity": "input_select.pi_console_player",
-                  "state": "media_player.denon_avc_x4700h_3"
-                }
-              ],
+              "type": "custom:home-console-receiver-layout",
               "card": {
                 "type": "vertical-stack",
                 "cards": [
@@ -421,177 +845,120 @@
                     "conditions": [
                       {
                         "condition": "state",
-                        "entity": "media_player.denon_avc_x4700h_3",
+                        "entity": "media_player.denon_avc_x4700h",
                         "state_not": "off"
                       },
                       {
                         "condition": "state",
-                        "entity": "media_player.denon_avc_x4700h_3",
+                        "entity": "media_player.denon_avc_x4700h",
                         "state_not": "unknown"
                       },
                       {
                         "condition": "state",
-                        "entity": "media_player.denon_avc_x4700h_3",
+                        "entity": "media_player.denon_avc_x4700h",
                         "state_not": "unavailable"
                       }
                     ],
                     "card": {
-                      "type": "tile",
-                      "entity": "media_player.denon_avc_x4700h_3",
-                      "name": "Volume · Denon AVC-X4700H",
-                      "features": [
-                        {
-                          "type": "media-player-volume-slider"
-                        }
-                      ]
+                      "type": "custom:home-console-volume-slider",
+                      "card": {
+                        "type": "tile",
+                        "entity": "media_player.denon_avc_x4700h",
+                        "name": "Denon volume",
+                        "features": [
+                          {
+                            "type": "media-player-volume-slider"
+                          }
+                        ]
+                      },
+                      "hide_mute": false
                     }
-                  }
-                ]
-              }
-            },
-            {
-              "type": "conditional",
-              "conditions": [
-                {
-                  "condition": "state",
-                  "entity": "input_select.pi_console_player",
-                  "state": "media_player.bedroom_3"
-                }
-              ],
-              "card": {
-                "type": "vertical-stack",
-                "cards": [
-                  {
-                    "type": "media-control",
-                    "entity": "media_player.bedroom_3"
                   },
                   {
-                    "type": "conditional",
-                    "conditions": [
+                    "type": "grid",
+                    "columns": 1,
+                    "square": false,
+                    "cards": [
                       {
-                        "condition": "state",
-                        "entity": "media_player.bedroom_3",
-                        "state_not": "off"
-                      },
-                      {
-                        "condition": "state",
-                        "entity": "media_player.bedroom_3",
-                        "state_not": "unknown"
-                      },
-                      {
-                        "condition": "state",
-                        "entity": "media_player.bedroom_3",
-                        "state_not": "unavailable"
+                        "type": "vertical-stack",
+                        "cards": [
+                          {
+                            "type": "conditional",
+                            "conditions": [
+                              {
+                                "condition": "template",
+                                "value_template": "{{ is_state('media_player.denon_avc_x4700h', 'off') }}"
+                              }
+                            ],
+                            "card": {
+                              "type": "custom:home-console-active-button",
+                              "active": true,
+                              "icon_color": "#ef5350",
+                              "tooltip": "Выключить",
+                              "card": {
+                                "type": "button",
+                                "name": "Off",
+                                "show_state": false,
+                                "tap_action": {
+                                  "action": "perform-action",
+                                  "perform_action": "media_player.turn_off",
+                                  "data": {},
+                                  "target": {
+                                    "entity_id": "media_player.denon_avc_x4700h"
+                                  }
+                                },
+                                "hold_action": {
+                                  "action": "none"
+                                },
+                                "icon": "mdi:power",
+                                "show_name": false,
+                                "show_icon": true,
+                                "icon_height": "28px"
+                              }
+                            }
+                          },
+                          {
+                            "type": "conditional",
+                            "conditions": [
+                              {
+                                "condition": "template",
+                                "value_template": "{{ not (is_state('media_player.denon_avc_x4700h', 'off')) }}"
+                              }
+                            ],
+                            "card": {
+                              "type": "custom:home-console-active-button",
+                              "active": false,
+                              "icon_color": "#ef5350",
+                              "tooltip": "Выключить",
+                              "card": {
+                                "type": "button",
+                                "name": "Off",
+                                "show_state": false,
+                                "tap_action": {
+                                  "action": "perform-action",
+                                  "perform_action": "media_player.turn_off",
+                                  "data": {},
+                                  "target": {
+                                    "entity_id": "media_player.denon_avc_x4700h"
+                                  }
+                                },
+                                "hold_action": {
+                                  "action": "none"
+                                },
+                                "icon": "mdi:power",
+                                "show_name": false,
+                                "show_icon": true,
+                                "icon_height": "28px"
+                              }
+                            }
+                          }
+                        ]
                       }
-                    ],
-                    "card": {
-                      "type": "tile",
-                      "entity": "media_player.bedroom_3",
-                      "name": "Volume · Bedroom · WiiM Ultra",
-                      "features": [
-                        {
-                          "type": "media-player-volume-slider"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            },
-            {
-              "type": "conditional",
-              "conditions": [
-                {
-                  "condition": "state",
-                  "entity": "input_select.pi_console_player",
-                  "state": "media_player.lg_tv_oled83c_2"
-                }
-              ],
-              "card": {
-                "type": "vertical-stack",
-                "cards": [
-                  {
-                    "type": "media-control",
-                    "entity": "media_player.lg_tv_oled83c_2"
+                    ]
                   },
                   {
-                    "type": "conditional",
-                    "conditions": [
-                      {
-                        "condition": "state",
-                        "entity": "media_player.lg_tv_oled83c_2",
-                        "state_not": "off"
-                      },
-                      {
-                        "condition": "state",
-                        "entity": "media_player.lg_tv_oled83c_2",
-                        "state_not": "unknown"
-                      },
-                      {
-                        "condition": "state",
-                        "entity": "media_player.lg_tv_oled83c_2",
-                        "state_not": "unavailable"
-                      }
-                    ],
-                    "card": {
-                      "type": "tile",
-                      "entity": "media_player.lg_tv_oled83c_2",
-                      "name": "Volume · Living room · LG TV",
-                      "features": [
-                        {
-                          "type": "media-player-volume-slider"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            },
-            {
-              "type": "conditional",
-              "conditions": [
-                {
-                  "condition": "state",
-                  "entity": "input_select.pi_console_player",
-                  "state": "media_player.shield_3"
-                }
-              ],
-              "card": {
-                "type": "vertical-stack",
-                "cards": [
-                  {
-                    "type": "media-control",
-                    "entity": "media_player.shield_3"
-                  },
-                  {
-                    "type": "conditional",
-                    "conditions": [
-                      {
-                        "condition": "state",
-                        "entity": "media_player.shield_3",
-                        "state_not": "off"
-                      },
-                      {
-                        "condition": "state",
-                        "entity": "media_player.shield_3",
-                        "state_not": "unknown"
-                      },
-                      {
-                        "condition": "state",
-                        "entity": "media_player.shield_3",
-                        "state_not": "unavailable"
-                      }
-                    ],
-                    "card": {
-                      "type": "tile",
-                      "entity": "media_player.shield_3",
-                      "name": "Volume · SHIELD",
-                      "features": [
-                        {
-                          "type": "media-player-volume-slider"
-                        }
-                      ]
-                    }
+                    "type": "custom:home-console-radio-favorites",
+                    "player": "media_player.denon_avc_x4700h_3"
                   }
                 ]
               }
@@ -799,7 +1166,8 @@
             }
           ]
         }
-      ]
+      ],
+      "visible": false
     },
     {
       "title": "Players",
@@ -830,12 +1198,21 @@
                   "entity": "media_player.denon_avc_x4700h_3",
                   "name": "Denon AVC-X4700H",
                   "tap_action": {
-                    "action": "none"
+                    "action": "more-info"
                   },
                   "hold_action": {
                     "action": "none"
                   },
                   "icon_tap_action": {
+                    "action": "more-info"
+                  },
+                  "double_tap_action": {
+                    "action": "none"
+                  },
+                  "icon_hold_action": {
+                    "action": "none"
+                  },
+                  "icon_double_tap_action": {
                     "action": "none"
                   }
                 },
@@ -844,12 +1221,21 @@
                   "entity": "media_player.bedroom_3",
                   "name": "Bedroom · WiiM Ultra",
                   "tap_action": {
-                    "action": "none"
+                    "action": "more-info"
                   },
                   "hold_action": {
                     "action": "none"
                   },
                   "icon_tap_action": {
+                    "action": "more-info"
+                  },
+                  "double_tap_action": {
+                    "action": "none"
+                  },
+                  "icon_hold_action": {
+                    "action": "none"
+                  },
+                  "icon_double_tap_action": {
                     "action": "none"
                   }
                 },
@@ -858,12 +1244,21 @@
                   "entity": "media_player.lg_tv_oled83c_2",
                   "name": "Living room · LG TV",
                   "tap_action": {
-                    "action": "none"
+                    "action": "more-info"
                   },
                   "hold_action": {
                     "action": "none"
                   },
                   "icon_tap_action": {
+                    "action": "more-info"
+                  },
+                  "double_tap_action": {
+                    "action": "none"
+                  },
+                  "icon_hold_action": {
+                    "action": "none"
+                  },
+                  "icon_double_tap_action": {
                     "action": "none"
                   }
                 },
@@ -872,12 +1267,21 @@
                   "entity": "media_player.shield_3",
                   "name": "SHIELD",
                   "tap_action": {
-                    "action": "none"
+                    "action": "more-info"
                   },
                   "hold_action": {
                     "action": "none"
                   },
                   "icon_tap_action": {
+                    "action": "more-info"
+                  },
+                  "double_tap_action": {
+                    "action": "none"
+                  },
+                  "icon_hold_action": {
+                    "action": "none"
+                  },
+                  "icon_double_tap_action": {
                     "action": "none"
                   }
                 }
@@ -1131,7 +1535,8 @@
             }
           ]
         }
-      ]
+      ],
+      "visible": false
     },
     {
       "title": "Internet Radio",
@@ -1418,6 +1823,49 @@
                   }
                 }
               }
+            }
+          ]
+        }
+      ],
+      "visible": false
+    },
+    {
+      "title": "UPS",
+      "path": "ups",
+      "icon": "mdi:power-plug-battery",
+      "panel": true,
+      "cards": [
+        {
+          "type": "custom:home-console-ups",
+          "cards": [
+            {
+              "type": "markdown",
+              "content": "{% if has_value('sensor.connected_ups_connected') %}\n{{ state_attr('sensor.connected_ups_connected', 'manufacturer') }} · {{ states('sensor.connected_ups_connected') }}<br>Status: **{{ states('sensor.connected_ups_status') }}**\n{% else %}\n**UPS not connected or data unavailable**\n{% endif %}"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.connected_ups_battery_charge",
+              "name": "Battery charge"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.connected_ups_load",
+              "name": "Load"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.connected_ups_input_voltage",
+              "name": "Input voltage"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.connected_ups_battery_runtime",
+              "name": "Battery runtime"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.connected_ups_battery_voltage",
+              "name": "Battery voltage"
             }
           ]
         }

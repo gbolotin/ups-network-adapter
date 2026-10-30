@@ -44,9 +44,13 @@ class ScreenPolicy:
     lit: bool = True
     consuming: bool = False
     was_touched: bool = False
+    night_enabled: bool = True
 
-    def update(self, now: float, hour: int, touched: bool) -> tuple[bool, bool]:
-        day = 7 <= hour < 23
+    def update(self, now: float, hour: int, touched: bool, night_enabled: bool = True) -> tuple[bool, bool]:
+        if night_enabled and not self.night_enabled:
+            self.awake_until = now + 120
+        self.night_enabled = night_enabled
+        day = not night_enabled or 7 <= hour < 23
         if self.consuming and not touched:
             self.consuming = False
         if not self.lit and touched:

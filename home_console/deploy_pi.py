@@ -14,6 +14,7 @@ TARGETS = {
     'kiosk_policy.py': ('/usr/local/lib/ups-network-adapter/kiosk_policy.py', 0o644),
     'kiosk_supervisor.py': ('/usr/local/lib/ups-network-adapter/kiosk_supervisor.py', 0o644),
     'kiosk_screen.py': ('/usr/local/lib/ups-network-adapter/kiosk_screen.py', 0o644),
+    'screen_settings.py': ('/usr/local/lib/ups-network-adapter/screen_settings.py', 0o644),
     'offline.html': ('/usr/local/share/ups-kiosk/offline.html', 0o644),
     'ups-kiosk-browser': ('/usr/local/bin/ups-kiosk-browser', 0o755),
     'ups-kiosk.service': ('/etc/systemd/system/ups-kiosk.service', 0o644),

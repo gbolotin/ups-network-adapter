@@ -14,6 +14,7 @@ import struct
 import time
 
 from kiosk_policy import ScreenPolicy
+from screen_settings import read_night_blanking
 
 EVENT = struct.Struct("llHHi")
 EVIOCGRAB = 0x40044590
@@ -104,13 +105,14 @@ def main():
     signal.signal(signal.SIGINT, stop)
     try:
         while not stopping:
+            night_enabled = read_night_blanking()
             readable, _, _ = select.select([screen.fd], [], [], 0.25)
             if readable:
                 for touched in screen.frames():
-                    if not screen.apply(*policy.update(time.monotonic(), datetime.datetime.now().hour, touched)):
+                    if not screen.apply(*policy.update(time.monotonic(), datetime.datetime.now().hour, touched, night_enabled)):
                         policy.lit = screen.lit
             else:
-                if not screen.apply(*policy.update(time.monotonic(), datetime.datetime.now().hour, screen.touched)):
+                if not screen.apply(*policy.update(time.monotonic(), datetime.datetime.now().hour, screen.touched, night_enabled)):
                     policy.lit = screen.lit
     finally:
         screen.close()

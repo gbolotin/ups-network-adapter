@@ -51,7 +51,7 @@ async function main() {
     const entries = (await ha.command('config_entries/get')).filter(item => item.domain === 'music_assistant' && item.state === 'loaded');
     if (entries.length !== 1) throw new Error('Expected one loaded MA integration');
     const config = buildDashboard({ music: true, navigation: true, configEntryId: entries[0].entry_id });
-    visitCards(config, card => { if (card.type === 'custom:ma-browser-card') card.ma_token = maCredentials.token; });
+    visitCards(config, card => { if (['custom:ma-browser-card', 'custom:home-console-radio-favorites'].includes(card.type)) card.ma_token = maCredentials.token; });
     const metadata = await ha.command('lovelace/dashboards/list');
     const before = { created_utc: new Date().toISOString(), dashboards: [] };
     for (const dashboard of metadata) {

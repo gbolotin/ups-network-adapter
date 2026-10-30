@@ -60,7 +60,7 @@ test('HACS verification rejects missing installs or unapproved versions', () => 
 test('published hashed modules resolve imports within the same asset set', async () => {
   const { assets, entry } = await buildUiAssets();
   const names = new Set(assets.map(asset => asset.name));
-  assert.equal(names.size, 5);
+  assert.equal(names.size, 17);
   assert.ok(names.has(entry));
   for (const asset of assets) {
     for (const match of asset.text.matchAll(/(?:from\s+|import\s*)'\.\/([^']+)'/g)) {

@@ -1,0 +1,19 @@
+[Unit]
+Description=Restricted Home Assistant power controls for Home Console Pi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/ups-network-adapter/kiosk_control.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+StateDirectory=ups-kiosk-control
+StateDirectoryMode=0700
+
+[Install]
+WantedBy=multi-user.target

@@ -37,6 +37,22 @@ class RecoveryTests(unittest.TestCase):
 
 
 class ScreenTests(unittest.TestCase):
+    def test_disabling_night_blanking_lights_screen_and_reenable_grants_idle_interval(self):
+        policy = ScreenPolicy()
+        self.assertEqual(policy.update(0, 23, False), (False, True))
+        self.assertEqual(policy.update(1, 23, False, False), (True, False))
+        self.assertEqual(policy.update(1000, 2, False, False), (True, False))
+        self.assertEqual(policy.update(1001, 2, False, True), (True, False))
+        self.assertEqual(policy.update(1120, 2, False, True), (True, False))
+        self.assertEqual(policy.update(1121, 2, False, True), (False, True))
+
+    def test_disabling_during_wake_does_not_release_a_held_wake_contact(self):
+        policy = ScreenPolicy()
+        policy.update(0, 23, False)
+        self.assertEqual(policy.update(1, 23, True), (True, True))
+        self.assertEqual(policy.update(2, 23, True, False), (True, True))
+        self.assertEqual(policy.update(3, 23, False, False), (True, False))
+
     def test_day_stays_lit_and_night_starts_dark_with_grab(self):
         policy = ScreenPolicy()
         self.assertEqual(policy.update(0, 7, False), (True, False))

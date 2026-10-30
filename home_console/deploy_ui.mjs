@@ -25,7 +25,26 @@ export async function buildUiAssets() {
   const keyboardSource = await readFile(new URL('./ui/touch-keyboard.js', import.meta.url), 'utf8');
   if (!keyboardSource.includes("'./keyboard-policy.mjs'")) throw new Error('Review the keyboard policy import');
   const keyboard = asset('touch-keyboard', keyboardSource.replace("'./keyboard-policy.mjs'", `'./${keyboardPolicy}'`));
-  const entry = asset('home-console-ui', `import './${queue}';\nimport './${keyboard}';\n`);
+  const duration = asset('ups-format', await readFile(new URL('./ui/ups-format.mjs', import.meta.url), 'utf8'));
+  const upsSource = await readFile(new URL('./ui/ups-layout.js', import.meta.url), 'utf8');
+  if (!upsSource.includes("'./ups-format.mjs'")) throw new Error('Review the UPS duration import');
+  const ups = asset('ups-layout', upsSource.replace("'./ups-format.mjs'", `'./${duration}'`));
+  const activeButton = asset('active-button', await readFile(new URL('./ui/active-button.js', import.meta.url), 'utf8'));
+  const volumeSlider = asset('volume-slider-only', await readFile(new URL('./ui/volume-slider-only.js', import.meta.url), 'utf8'));
+  const radio = asset('radio-favorites', await readFile(new URL('./ui/radio-favorites.js', import.meta.url), 'utf8'));
+  const tv = asset('tv-layout', await readFile(new URL('./ui/tv-layout.js', import.meta.url), 'utf8'));
+  const receiver = asset('receiver-layout', await readFile(new URL('./ui/receiver-layout.js', import.meta.url), 'utf8'));
+  const home = asset('home-layout', await readFile(new URL('./ui/home-layout.js', import.meta.url), 'utf8'));
+  const borderless = asset('borderless-tile', await readFile(new URL('./ui/borderless-tile.js', import.meta.url), 'utf8'));
+  const door = asset('door-card', await readFile(new URL('./ui/door-card.js', import.meta.url), 'utf8'));
+  const saverPolicy = asset('screensaver-policy', await readFile(new URL('./ui/screensaver-policy.mjs', import.meta.url), 'utf8'));
+  const settings = asset('kiosk-settings', await readFile(new URL('./ui/kiosk-settings.mjs', import.meta.url), 'utf8'));
+  const drawerSource = await readFile(new URL('./ui/control-drawer.js', import.meta.url), 'utf8');
+  const drawer = asset('control-drawer', drawerSource.replace("'./kiosk-settings.mjs'", `'./${settings}'`));
+  const saverSource = await readFile(new URL('./ui/screensaver.js', import.meta.url), 'utf8');
+  if (!saverSource.includes("'./screensaver-policy.mjs'")) throw new Error('Review screensaver policy import');
+  const saver = asset('screensaver', saverSource.replace("'./screensaver-policy.mjs'", `'./${saverPolicy}'`).replace("'./kiosk-settings.mjs'", `'./${settings}'`));
+  const entry = asset('home-console-ui', `import './${queue}';\nimport './${keyboard}';\nimport './${ups}';\nimport './${activeButton}';\nimport './${volumeSlider}';\nimport './${radio}';\nimport './${tv}';\nimport './${receiver}';\nimport './${home}';\nimport './${borderless}';\nimport './${door}';\nimport './${drawer}';\nimport './${saver}';\n`);
   return { assets, entry };
 }
 

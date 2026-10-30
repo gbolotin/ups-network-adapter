@@ -1,10 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyFoundation, resolveNutSensors, verifyBackup } from './apply_foundation.mjs';
-import { buildDashboard, buildScripts, DENON, TV, PLAYERS, PLAYER_HELPER } from './dashboard.mjs';
+import { buildDashboard, buildScripts, buildTvWakeAutomation, DENON, TV, PLAYERS, PLAYER_HELPER } from './dashboard.mjs';
 import { assertOutsideRepository, capture } from './ha_snapshot.mjs';
 
 const backup = { backup_id: 'verified', homeassistant_included: true, database_included: true, agents: { 'hassio.local': { size: 1234 } }, failed_addons: [], failed_agent_ids: [], failed_folders: [] };
+test('TV wake automation acts only on an explicit request for the mapped native TV', () => {
+  const button = 'button.wake_on_lan_verified_tv';
+  const automation = buildTvWakeAutomation(button);
+  assert.deepEqual(automation.triggers, [{ trigger: 'webostv.turn_on', entity_id: TV }]);
+  assert.deepEqual(automation.actions, [{ action: 'button.press', target: { entity_id: button } }]);
+  assert.throws(() => buildTvWakeAutomation('switch.other_device'), /verified/);
+});
 const registry = [
   { entity_id: 'sensor.ups_apc_status_data', platform: 'nut', config_entry_id: 'apc', unique_id: 'APC_ups.status' },
   { entity_id: 'sensor.ups_battery_runtime', platform: 'nut', config_entry_id: 'apc', unique_id: 'APC_battery.runtime', disabled_by: 'integration' },
@@ -91,14 +98,29 @@ test('sensor resolution rejects ambiguous mappings and never takes another UPS',
   assert.throws(() => resolveNutSensors([...registry, { ...registry[1], entity_id: 'sensor.duplicate' }], 'apc'), /exactly one/);
 });
 
-test('lock has no actionable entity card; native home scripts keep fixed device targets', () => {
+test('lock tile opens details without direct lock actions; native scripts keep fixed targets', () => {
   const dashboard = buildDashboard();
-  const lock = dashboard.views.find(item => item.path === 'home').cards[0].cards[0];
-  assert.equal(lock.type, 'markdown');
+  const home = dashboard.views.find(item => item.path === 'home').cards[0];
+  assert.equal(home.type, 'custom:home-console-home-layout');
+  const row = home.card.cards[0];
+  assert.equal(row.type, 'custom:home-console-door-card');
+  assert.equal(row.battery.entity, 'sensor.lock_ultra_17_battery');
+  assert.equal(home.card.cards[1].entity, 'switch.power_plug_cd43');
+  const lock = row.card;
+  assert.equal(lock.type, 'tile');
+  assert.equal(lock.entity, 'lock.lock_ultra_17');
+  assert.equal(lock.name, 'Front door');
+  assert.deepEqual(lock.features, [{ type: 'lock-commands' }]);
+  for (const action of ['tap_action', 'icon_tap_action']) assert.equal(lock[action].action, 'more-info');
+  for (const action of ['hold_action', 'double_tap_action', 'icon_hold_action', 'icon_double_tap_action']) {
+    assert.equal(lock[action].action, 'none');
+  }
+  assert.ok(!JSON.stringify(dashboard.views.find(item => item.path === 'home')).match(/## \d+ ·/));
   const scripts = buildScripts();
   for (const [id, entity] of [['home_console_denon_source', DENON], ['home_console_tv_source', TV]]) {
     const script = scripts[id];
-    assert.equal(script.sequence[1].then[0].target.entity_id, entity);
+    assert.equal(script.sequence[1].then.at(-1).target.entity_id, entity);
+    if (entity === DENON) assert.deepEqual(script.sequence[1].then[0], { delay: '00:00:05' });
     assert.equal(script.sequence[2].continue_on_timeout, false);
     assert.equal(script.sequence[3].target.entity_id, entity);
     assert.ok(!JSON.stringify(script).includes(PLAYER_HELPER));
@@ -129,13 +151,15 @@ test('kiosk swipes suppress competing native gestures and keep mouse navigation 
   assert.equal('swipe_nav' in buildDashboard(), false);
 });
 
-test('other-room status icons cannot issue player commands', () => {
+test('player status tiles only open native details and cannot issue player commands directly', () => {
   const players = buildDashboard().views.find(item => item.path === 'players');
   const statuses = players.cards[0].cards[1].cards;
+  assert.deepEqual(statuses.map(card => card.entity), PLAYERS.map(player => player.entity));
   for (const card of statuses) {
-    assert.equal(card.tap_action.action, 'none');
-    assert.equal(card.hold_action.action, 'none');
-    assert.equal(card.icon_tap_action.action, 'none');
+    for (const action of ['tap_action', 'icon_tap_action']) assert.equal(card[action].action, 'more-info');
+    for (const action of ['hold_action', 'double_tap_action', 'icon_hold_action', 'icon_double_tap_action']) {
+      assert.equal(card[action].action, 'none');
+    }
   }
 });
 
@@ -158,4 +182,24 @@ test('secret export refuses checkout paths and permits an outside location', () 
   assert.throws(() => assertOutsideRepository('/repo/private', '/repo'));
   assert.throws(() => assertOutsideRepository('/repo/..private', '/repo'));
   assert.doesNotThrow(() => assertOutsideRepository('/private/backups', '/repo'));
+});
+
+test('live Players details upgrade changes only the four status-tile actions', async () => {
+  const { enablePlayerDetails } = await import('./players_details.mjs');
+  const { readFile } = await import('node:fs/promises');
+  const exported = JSON.parse(await readFile(new URL('../docs/Home_Console_RaspberryPi_Plan/home-console-dashboard.json', import.meta.url), 'utf8'));
+  const after = enablePlayerDetails(exported);
+  const tilesOf = config => config.views.find(view => view.path === 'players').cards[0].cards[1].cards;
+  const expected = buildDashboard().views.find(view => view.path === 'players').cards[0].cards[1].cards;
+  for (const [index, card] of tilesOf(after).entries()) {
+    for (const key of ['tap_action', 'icon_tap_action', 'hold_action', 'double_tap_action', 'icon_hold_action', 'icon_double_tap_action']) {
+      assert.deepEqual(card[key], expected[index][key]);
+    }
+  }
+  const strip = config => { const copy = structuredClone(config); for (const card of tilesOf(copy)) for (const key of Object.keys(card)) if (key.endsWith('_action')) delete card[key]; return copy; };
+  assert.deepEqual(strip(after), strip(exported));
+  assert.deepEqual(enablePlayerDetails(after), after);
+  const broken = structuredClone(exported);
+  tilesOf(broken).pop();
+  assert.throws(() => enablePlayerDetails(broken), /Players layout changed/);
 });

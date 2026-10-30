@@ -113,6 +113,34 @@
         "data": {
           "source": "{{ source }}"
         }
+      },
+      {
+        "action": "script.home_console_denon_source",
+        "data": {
+          "source": "TV Audio"
+        }
+      },
+      {
+        "if": [
+          {
+            "condition": "template",
+            "value_template": "{{ state_attr('media_player.lg_webos_tv_oled83c36la', 'sound_output') != 'external_arc' }}"
+          }
+        ],
+        "then": [
+          {
+            "action": "webostv.select_sound_output",
+            "data": {
+              "entity_id": "media_player.lg_webos_tv_oled83c36la",
+              "sound_output": "external_arc"
+            }
+          },
+          {
+            "wait_template": "{{ state_attr('media_player.lg_webos_tv_oled83c36la', 'sound_output') == 'external_arc' }}",
+            "timeout": "00:00:10",
+            "continue_on_timeout": false
+          }
+        ]
       }
     ]
   },
@@ -190,6 +218,58 @@
         "data": {
           "source_player": "{{ source_player }}",
           "auto_play": true
+        }
+      }
+    ]
+  },
+  "home_console_receiver_radio": {
+    "alias": "Home Console · Receiver radio",
+    "mode": "restart",
+    "max_exceeded": "silent",
+    "description": "Every explicit station tap wakes Denon, selects HEOS and replaces playback, including repeated taps.",
+    "fields": {
+      "media_id": {
+        "required": true,
+        "selector": {
+          "text": {}
+        }
+      }
+    },
+    "sequence": [
+      {
+        "if": [
+          {
+            "condition": "template",
+            "value_template": "{{ media_id is not string or not (media_id | regex_match('^library://radio/[0-9]+$')) or states('media_player.denon_avc_x4700h') in ['unknown', 'unavailable'] }}"
+          }
+        ],
+        "then": [
+          {
+            "stop": "Radio station or Denon is unavailable.",
+            "error": true
+          }
+        ]
+      },
+      {
+        "action": "script.home_console_denon_source",
+        "data": {
+          "source": "HEOS Music"
+        }
+      },
+      {
+        "wait_template": "{{ states('media_player.denon_avc_x4700h') not in ['off', 'unknown', 'unavailable'] and state_attr('media_player.denon_avc_x4700h', 'source') in ['HEOS Music', 'NET'] and states('media_player.denon_avc_x4700h_3') not in ['unknown', 'unavailable'] }}",
+        "timeout": "00:00:20",
+        "continue_on_timeout": false
+      },
+      {
+        "action": "music_assistant.play_media",
+        "target": {
+          "entity_id": "media_player.denon_avc_x4700h_3"
+        },
+        "data": {
+          "media_id": "{{ media_id }}",
+          "media_type": "radio",
+          "enqueue": "replace"
         }
       }
     ]

@@ -43,7 +43,7 @@ The foundation is already applied on this installation. Repeating `--apply` refu
 - Transfer rejects the same source/target, unavailable rooms, and sources without an active MA queue. External Spotify playback is not an MA queue. The user-approved Bedroom-to-Denon transfer and restoration passed.
 - Both Pi helpers are hidden from automatically generated household dashboards using the entity registry's user-hidden flag. Explicit console cards continue to reference them.
 - Denon and LG source scripts use fixed native entities, allowlisted sources, and a 30-second readiness wait. Invalid/unavailable devices do not trigger a source command. Physical standby/wake remains an acceptance test.
-- The lock appears as text with no entity action. Player status tiles on Players have no tap/hold actions; selected-room controls remain separate.
+- The lock is a native tile with explicit more-info actions for tile/icon taps; hold/double-tap actions are disabled. The user requested the native popup on October 28; it includes HA lock controls, which were not operated during acceptance. Player status tiles on Players open the native media-player details (volume, mute, Join/grouping, source, browse) on tile/icon tap, as the user approved on October 28; hold/double-tap actions are disabled, so no single tap sends a player command. `players_details.mjs` applies this to the live dashboard (preflight by default; private journal `players-details.json`). Selected-room controls remain separate.
 - Native volume sliders are hidden in off/unknown/unavailable states. Rendering or changing views does not call a device service.
 - Scripts are saved through HA's supported configuration API, which reloads scripts. Preflight refuses active scripts. Never run deployment during another household script operation.
 - `foundation-journal.json` records a pending entry before each mutation. An interrupted request can have succeeded remotely even if its journal entry remains pending. Inspect HA before retrying or reverting.
@@ -69,11 +69,11 @@ UI deployment temporarily used the existing File Editor `6.3.0`, then stopped it
 ## Checks
 
 ```powershell
-node --test home_console/test_foundation.mjs home_console/test_queue_policy.mjs home_console/test_keyboard_policy.mjs home_console/test_keyboard_lifecycle.mjs home_console/test_household.mjs home_console/test_playback_test_policy.mjs
+node --test home_console/test_foundation.mjs home_console/test_queue_policy.mjs home_console/test_keyboard_policy.mjs home_console/test_keyboard_lifecycle.mjs home_console/test_household.mjs home_console/test_playback_test_policy.mjs home_console/test_ups_layout.mjs
 python -m unittest display.test_kiosk_policy home_console.test_capture_pi
 ```
 
-The 33 Node and 12 Python checks cover preflight refusal, partial-failure journals, player isolation, queue boundaries, secret stripping, module imports, EN/RU edits, keyboard lifecycle, household roles, owned-test-queue cleanup, recovery/backlight policy, and archive integrity. Two opt-in real-Chromium fixture tests also passed on Linux; they use temporary profiles, not the signed-in kiosk profile. Live and physical acceptance are tracked separately in the implementation record.
+The 40 Node and 12 Python checks cover preflight refusal, partial-failure journals, player isolation, queue boundaries, secret stripping, module imports, EN/RU edits, keyboard lifecycle, household roles, owned-test-queue cleanup, recovery/backlight policy, and archive integrity. Two opt-in real-Chromium fixture tests also passed on Linux; they use temporary profiles, not the signed-in kiosk profile. Live and physical acceptance are tracked separately in the implementation record.
 
 ## Pi operation and acceptance tools
 
@@ -108,3 +108,60 @@ For a necessary GUI restart, use `sudo systemctl restart ups-kiosk.service`. It 
 The bounded observer uses existing Python/systemd, private minute samples, low process priority, and a fixed schedule file. It monitors actual `upsdisplay` account PSS because PAM places GUI children in a session scope outside the kiosk unit's memory cgroup. It also checks HA connection/rendering/live UPS status, NUT/services, available RAM, and temperature. A restart never renews the deadline. Read sample gaps and planned acceptance exclusions before declaring stability. The thread follow-up is bounded and quiet while unchanged.
 
 Before a HACS/HA/MA update, capture configuration/resources privately, keep the previous files, and retest as `pi-kiosk`. The approved pins are not permission for unreviewed future versions. Final HA backup `8cc60c4a` includes the final swipe configuration; confirm backup completion rather than only a request ID.
+
+## UPS readability layout
+
+`ui/ups-layout.js` supplies a presentation-only wrapper around the existing status and five native sensor cards. Labels/status, values, headings, and icons are enlarged 50%; the battery charge spans the first row, with two paired rows below. The layout fills the available kiosk height. Native readings, units, unavailable states, and more-info actions remain owned by Home Assistant. No production dependency was added.
+
+Deploy the seven hashed UI assets with `deploy_ui.mjs` before applying `resize_ups.mjs --token-file <private-file> --snapshot-dir <private-directory> --apply`. The latter defaults to preflight, refuses a changed UPS card structure, preserves the other five views, and writes private before/after evidence. It is a one-time upgrade, not an idempotent dashboard generator. The active entry is `/local/home-console/home-console-ui.e7d611519cc1.js`. Rollback uses the UPS view from private `ups-readability-change.json` and the matching resource journal; preserve subsequent unrelated edits.
+Follow-up: the user approved another 25% on UPS only. Current labels/status are 26.25 px, values 22.5 px, headings 37.5 px, and icons 45 px (1.875 times the original sizes).
+
+Battery runtime now uses a presentation-only secondary slot on the native tile: hours/minutes at or above one hour, minutes/seconds below one hour, seconds below one minute. Whole seconds/minutes are floored. Unknown, unavailable, missing, negative, and unsupported-unit values retain the native display. The sensor and history remain unchanged.
+
+UPS load displays percent and estimated watts, calculated as percent × the live sensor.ups_nominal_real_power / 100. This BX750MI exposes 410 W nominal real power but no measured ups.realpower. The ≈ marker identifies an estimate; VA is never used as watts. The existing nominal power entity was enabled with a private before-record. Missing rating shows watts unavailable. Input/battery voltage use one decimal from their actual HA values; this does not increase measurement precision. Formatting helpers now live in ui/ups-format.mjs.
+
+Do not rerun check_home_sources.mjs with --apply or --guardian: live execution is explicitly disabled after the failed October 28 acceptance. Inspect IMPLEMENTATION_STATUS.md and private v1/v2 evidence. Native Denon source/volume and HEOS disagree; preserve newer household changes. No test guardian remains active.
+
+Grouping acceptance: check_grouping.mjs defaults to read-only preflight. Its protected v2 journal verifies zero-volume join/unjoin and queue/native-setting restoration. It opens only an empty existing Cast receiver to activate volume control; it sends no media/play commands. This is group control acceptance, not audible sync or complete physical Players UI acceptance. Native Denon mute state can be stale; the user physically confirmed restoration to TV Audio/-25 dB/unmuted. Do not substitute native/HEOS cached volume values for each other's control roles.
+
+## Connected UPS switching — October 30, 2026
+
+The live console and household UPS cards now follow `sensor.connected_ups_*`. The local `USB UPS Adapter` integration polls the stable NUT endpoint every ten seconds and keeps separate physical-device histories. APC is unavailable while Eaton 5E 2200 G2 is connected. The existing 22 APC entity IDs and their device ID were migrated through HA registry APIs; old history remains readable. The disabled native NUT entry is retained for rollback. The foundation generators above remain historical; use `switchUpsDashboard` after generating legacy card configuration.
+
+Measured watts take priority; estimates retain `≈`. Missing Eaton battery voltage stays unavailable. Deployment, serial-less identity limits and rollback are described in [UPS_SWITCHING.md](UPS_SWITCHING.md). The active UI resource is `/local/home-console/home-console-ui.75ded33efa64.js`.
+
+Verification: nine Python tests and 22 relevant Node tests passed. `check_ups_switching.mjs` verified original history, all 22 migrated entity IDs, actual Pi rendering at 1024×600, unavailable display during a brief HA adapter disable, and automatic recovery with unchanged IDs. Evidence: `output/ups-switching-validation.json` and `output/playwright/home-console-ups-switching*.png`. No physical USB swap or cable-disconnect test was performed. Playwright could not attach because the SSH key denies forwarding; the repository's existing loopback CDP diagnostic path verified the actual Pi browser instead. NUT monitoring continued independently.
+
+Version 1.0.1 repairs missing labels and inherited disabled defaults on implemented physical Eaton metrics. The repair runs once and preserves explicit user disables. Output voltage/frequency and apparent power are implemented; other archived settings retain descriptive labels and remain disabled. Live reload verification preserved all 56 previous entity IDs, found zero missing names, confirmed the repaired measurements and readable APC history. Evidence: `output/ups-label-repair-validation.json`. Nine Python and eight relevant Node tests passed.
+
+The Pi drawer now includes **Ночное гашение экрана**, a persistent device setting for the existing 23:00–07:00 / 120-second physical-backlight policy. The ordinary kiosk session verified both settings, persistence after a page reload and actual brightness 0→255 on disable; the original enabled setting was restored. Seven Node and fifteen Python tests passed. See [SCREENSAVER.md](SCREENSAVER.md) for deployment, storage and rollback. The current UI resource is `/local/home-console/home-console-ui.93bcb275e1f9.js`.
+
+The drawer also includes **Тема → Светлая / Тёмная**, using HA's native preference storage for the kiosk user. Both modes and dark-mode persistence after a page reload passed on the actual Pi; original preferences were restored after testing. Eight relevant Node tests passed. Current UI resource: `/local/home-console/home-console-ui.ad2484a83a98.js`; private rollback journal: `ui-drawer-theme-mode.json`.
+
+Passwordless login is enabled only from the Pi's exact `192.168.50.200/32` address as non-admin `pi-kiosk`; normal password authentication remains available. Fresh Pi browser login and rejection from the operator PC passed. The disposable test session was revoked; the retained kiosk session was preserved. Router DHCP reservation was not verified or changed. See [TRUSTED_PI_LOGIN.md](TRUSTED_PI_LOGIN.md) for the private rollback record and IP-change behavior.
+
+## Receiver layout
+
+The Receiver wrapper presents favorites as a vertically scrollable left column
+and the existing native Now Playing/artwork card on the right. A full-width
+bottom row contains the native volume slider, Mute and Off in that order.
+The Receiver TV Audio button was removed at the owner's request. Native device actions and radio playback targets are preserved; rendering
+the layout does not send device commands. Favorite refresh preserves vertical
+scroll position. `check_pi_receiver_layout.py` verifies column geometry and
+control order in the actual Pi browser. The same layout was checked on Samsung
+Galaxy Tab A7 through Fully Kiosk; screenshots are under `output/playwright/`.
+
+## TV audio routing
+
+Every non-Off TV source/app button uses `script.home_console_tv_source`. Each
+tap, including an already highlighted source, explicitly calls the existing
+Denon source script with `TV Audio`. It then switches LG sound output to
+`external_arc` if necessary and waits up to ten seconds for feedback. Off retains
+its native turn-off action.
+`route_tv_audio.mjs` upgrades only the existing script with a private rollback
+journal and configuration readback. Deployment does not execute device commands;
+physical rerouting during playback was not exercised by that deployment.
+
+Receiver lists all Music Assistant library radio stations by default. The All/Favorites switch filters the list. Each separate heart adds or removes a station from MA favorites without starting playback. The library refreshes every 15 seconds. UPS presentation and optional confirmed output control are documented in [UPS_SWITCHING.md](UPS_SWITCHING.md).
+
+Each live Receiver station tap now calls `script.home_console_receiver_radio`: verify/wake native Denon, select HEOS, wait for source readiness, then unconditionally replace the Music Assistant queue. Repeated taps restart the same station. The script uses restart mode so the latest station tap supersedes a pending selection. Unavailable devices and source timeouts stop before playback. Real first/repeat station tests are recorded privately; no UPS commands are involved.

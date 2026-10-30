@@ -20,15 +20,17 @@ export function buildHouseholdDashboard() {
           ]),
           section('Living room · TV', [
             { type: 'tile', entity: TV, name: 'LG TV', grid_options: { columns: 12 }, features: [{ type: 'media-player-volume-slider' }] },
-            home[4].cards[2],
+            home[4].cards[1],
           ]),
           section('Entry', [
             { type: 'tile', entity: 'lock.lock_ultra_17', name: 'Front door', features: [{ type: 'lock-commands' }] },
             { type: 'tile', entity: 'sensor.lock_ultra_17_battery', name: 'Lock battery' },
           ]),
-          section('Office · Aquarium', home[1].cards.slice(1)),
+          section('Office · Aquarium', [{ type: 'grid', columns: 2, square: false, cards: [
+            home[1], { type: 'tile', entity: 'sensor.power_plug_cd43_power', name: 'Measured power' },
+          ] }]),
           section('Living room · Camera', [
-            ...home[2].cards.slice(1), navigate('Open camera', '/dashboard-cameras/0'),
+            ...home[2].cards, navigate('Open camera', '/dashboard-cameras/0'),
           ]),
           section('More', [navigate('Music rooms', '/dashboard-new/music'), navigate('UPS', '/dashboard-new/ups'), navigate('Map', '/map')]),
         ],
@@ -86,3 +88,4 @@ export function entityReferences(value) {
   visit(value);
   return result;
 }
+

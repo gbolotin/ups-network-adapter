@@ -52,7 +52,7 @@ def sample():
                 result['ha'] = {'state': client.evaluate(READINESS),
                                 'visible': not client.evaluate('document.hidden'),
                                 'viewport': client.evaluate('({width:innerWidth,height:innerHeight,scale:devicePixelRatio})'),
-                                'ups': client.evaluate("document.querySelector('home-assistant')?.hass?.states?.['sensor.ups_apc_status_data']?.state ?? null")}
+                                'ups': client.evaluate("document.querySelector('home-assistant')?.hass?.states?.['sensor.connected_ups_status']?.state ?? document.querySelector('home-assistant')?.hass?.states?.['sensor.ups_apc_status_data']?.state ?? null")}
                 break
     except (OSError, RuntimeError, KeyError, ValueError):
         pass

@@ -1,0 +1,11 @@
+{
+  "domain": "usb_ups_adapter",
+  "name": "USB UPS Adapter",
+  "version": "1.0.1",
+  "config_flow": true,
+  "documentation": "https://github.com/home-assistant/core/tree/2026.10.4/homeassistant/components/nut",
+  "codeowners": [],
+  "iot_class": "local_polling",
+  "integration_type": "hub",
+  "requirements": []
+}
