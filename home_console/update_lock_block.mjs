@@ -1,0 +1,41 @@
+// Move the selected media card only; keep Receiver's existing volume and radio controls.
+import assert from 'node:assert/strict';
+import { writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { HomeAssistant } from './ha_client.mjs';
+import { sanitizedConfig } from './enable_music.mjs';
+import { assertOutsideRepository } from './ha_snapshot.mjs';
+
+const [tokenFile, journal] = process.argv.slice(2);
+assert.ok(tokenFile && journal);
+assertOutsideRepository(resolve(journal), fileURLToPath(new URL('..', import.meta.url)));
+const ha = await HomeAssistant.fromFile('http://192.168.50.117', tokenFile);
+try {
+  await ha.connect();
+  const before = await ha.command('lovelace/config', { url_path: 'home-console' });
+  const after = structuredClone(before);
+  const home = after.views.find(view => view.path === 'home').cards[0];
+  assert.equal(home.cards.length, 2);
+  const row = home.cards[0];
+  assert.equal(row.cards[0].entity, 'lock.lock_ultra_17');
+  assert.equal(row.cards[1].entity, 'switch.power_plug_cd43');
+  const battery = await ha.rest('/api/states/sensor.lock_ultra_17_battery');
+  assert.ok(!['unknown', 'unavailable'].includes(battery.state));
+  const outlet = row.cards[1];
+  row.cards[0].name = 'Front door';
+  row.cards[0].features = [{ type: 'lock-commands' }];
+  row.cards[1] = { type: 'tile', entity: battery.entity_id, name: 'Lock battery' };
+  home.cards.splice(1, 0, outlet);
+  const record = { utc: new Date().toISOString(), before, after, status: 'pending' };
+  await writeFile(journal, JSON.stringify(record, null, 2), { flag: 'wx', mode: 0o600 });
+  assert.deepEqual(await ha.command('lovelace/config', { url_path: 'home-console' }), before);
+  await ha.command('lovelace/config/save', { url_path: 'home-console', config: after });
+  assert.deepEqual(await ha.command('lovelace/config', { url_path: 'home-console' }), after);
+  record.status = 'verified';
+  await writeFile(journal, JSON.stringify(record, null, 2));
+  await writeFile(new URL('../docs/Home_Console_RaspberryPi_Plan/home-console-dashboard.json', import.meta.url), JSON.stringify(sanitizedConfig(after), null, 2) + '\n');
+  console.log('Verified: Home lock replaced with Front door controls and battery tile; no lock command sent.');
+} finally { ha.close(); }
+
+

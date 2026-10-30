@@ -1,7 +1,7 @@
 [Unit]
-Description=Full-screen UPS dashboard on the DSI display
-After=systemd-user-sessions.service systemd-logind.service docker.service getty@tty1.service
-Wants=systemd-logind.service docker.service
+Description=Home Console with local UPS fallback on the DSI display
+After=systemd-user-sessions.service systemd-logind.service getty@tty1.service
+Wants=systemd-logind.service
 Conflicts=getty@tty1.service
 ConditionPathExists=/dev/tty0
 StartLimitIntervalSec=0

@@ -13,7 +13,9 @@ import re
 import secrets
 import shlex
 import shutil
+import socket
 import ssl
+import struct
 import subprocess
 import tempfile
 import threading
@@ -265,6 +267,170 @@ def schedule_system_action(action: str, delay: float = 1.0) -> None:
     timer.start()
 
 
+def format_uptime(seconds: int) -> str:
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    if hours > 0:
+        return f'{hours}h {minutes}m'
+    return f'{minutes}m {seconds % 60}s'
+
+
+def format_runtime(seconds: int) -> str:
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+    if hours > 0:
+        return f'{hours}h {minutes}m {secs}s'
+    if minutes > 0:
+        return f'{minutes}m {secs}s'
+    return f'{secs}s'
+
+
+def get_network_info() -> dict:
+    result = {
+        'hostname': socket.gethostname(),
+        'ip': '127.0.0.1',
+        'prefix': 24,
+        'gateway': '127.0.0.1',
+        'interface': 'eth0',
+        'mac': 'N/A'
+    }
+    route_file = Path('/proc/net/route')
+    if route_file.exists():
+        try:
+            for line in route_file.read_text().splitlines()[1:]:
+                fields = line.strip().split()
+                if len(fields) >= 8 and fields[1] == '00000000':
+                    result['interface'] = fields[0]
+                    result['gateway'] = socket.inet_ntoa(struct.pack('<L', int(fields[2], 16)))
+                    mac_file = Path(f'/sys/class/net/{fields[0]}/address')
+                    if mac_file.exists():
+                        result['mac'] = mac_file.read_text().strip()
+                    break
+            for line in route_file.read_text().splitlines()[1:]:
+                fields = line.strip().split()
+                if len(fields) >= 8 and fields[0] == result['interface'] and fields[1] != '00000000':
+                    result['prefix'] = bin(int(fields[7], 16)).count('1')
+                    break
+        except Exception:
+            pass
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        target_gw = result['gateway'] if result['gateway'] != '127.0.0.1' else '8.8.8.8'
+        s.connect((target_gw, 80))
+        result['ip'] = s.getsockname()[0]
+        s.close()
+    except OSError:
+        pass
+    return result
+
+
+def get_system_health() -> dict:
+    temp = None
+    thermal = Path('/sys/class/thermal/thermal_zone0/temp')
+    if thermal.exists():
+        try:
+            temp = round(int(thermal.read_text().strip()) / 1000, 1)
+        except (ValueError, OSError):
+            pass
+
+    uptime_sec = 0
+    proc_uptime = Path('/proc/uptime')
+    if proc_uptime.exists():
+        try:
+            uptime_sec = int(float(proc_uptime.read_text().split()[0]))
+        except (ValueError, OSError):
+            pass
+
+    mem_total_mb = 0
+    mem_used_mb = 0
+    mem_pct = 0
+    proc_mem = Path('/proc/meminfo')
+    if proc_mem.exists():
+        try:
+            meminfo = {}
+            for line in proc_mem.read_text().splitlines():
+                parts = line.split(':')
+                if len(parts) == 2:
+                    meminfo[parts[0].strip()] = int(parts[1].strip().split()[0])
+            total_kb = meminfo.get('MemTotal', 0)
+            avail_kb = meminfo.get('MemAvailable', 0)
+            used_kb = total_kb - avail_kb
+            mem_total_mb = round(total_kb / 1024)
+            mem_used_mb = round(used_kb / 1024)
+            mem_pct = round(used_kb / total_kb * 100, 1) if total_kb else 0
+        except Exception:
+            pass
+
+    disk_total_gb = 0
+    disk_used_gb = 0
+    disk_pct = 0
+    try:
+        disk = shutil.disk_usage('/')
+        disk_total_gb = round(disk.total / (1024**3), 1)
+        disk_used_gb = round(disk.used / (1024**3), 1)
+        disk_pct = round(disk.used / disk.total * 100, 1) if disk.total else 0
+    except OSError:
+        pass
+
+    return {
+        'cpu_temp': temp,
+        'uptime_seconds': uptime_sec,
+        'uptime_formatted': format_uptime(uptime_sec),
+        'memory_total_mb': mem_total_mb,
+        'memory_used_mb': mem_used_mb,
+        'memory_percent': mem_pct,
+        'disk_total_gb': disk_total_gb,
+        'disk_used_gb': disk_used_gb,
+        'disk_percent': disk_pct
+    }
+
+
+def get_ups_metrics() -> dict:
+    try:
+        from ups_mib import read_ups
+        raw = read_ups('ups')
+        load_pct = float(raw.get('ups.load', 0))
+        nominal_watts = float(raw.get('ups.realpower.nominal', 0) or raw.get('ups.power.nominal', 0))
+        load_watts = round((load_pct / 100.0) * nominal_watts, 1) if nominal_watts else load_pct
+        runtime_sec = int(float(raw.get('battery.runtime', 0)))
+        return {
+            'status': raw.get('ups.status', 'UNKNOWN').split()[0] if raw.get('ups.status') else 'UNKNOWN',
+            'model': raw.get('ups.model') or raw.get('device.model', 'Unknown'),
+            'mfr': raw.get('ups.mfr') or raw.get('device.mfr', ''),
+            'battery_charge': int(float(raw.get('battery.charge', 100))),
+            'battery_runtime_seconds': runtime_sec,
+            'battery_runtime_formatted': format_runtime(runtime_sec),
+            'battery_voltage': raw.get('battery.voltage', '--'),
+            'input_voltage': raw.get('input.voltage', '--'),
+            'load_percent': int(load_pct),
+            'load_watts': load_watts,
+            'serial': raw.get('ups.serial') or raw.get('device.serial', '')
+        }
+    except Exception:
+        return {
+            'status': 'UNKNOWN',
+            'model': 'Back-UPS BX750MI',
+            'mfr': 'American Power Conversion',
+            'battery_charge': 100,
+            'battery_runtime_seconds': 0,
+            'battery_runtime_formatted': '--:--',
+            'battery_voltage': '--',
+            'input_voltage': '--',
+            'load_percent': 0,
+            'load_watts': 0,
+            'serial': ''
+        }
+
+
+def get_kiosk_data() -> dict:
+    return {
+        'ups': get_ups_metrics(),
+        'system': get_system_health(),
+        'network': get_network_info()
+    }
+
+
 class SettingsHandler(BaseHTTPRequestHandler):
     timeout = 10
 
@@ -279,7 +445,7 @@ class SettingsHandler(BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(payload)))
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+        self.send_header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
         self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header('Connection', 'close')
         if challenge:
@@ -289,10 +455,26 @@ class SettingsHandler(BaseHTTPRequestHandler):
             self.wfile.write(payload)
         self.close_connection = True
 
+    def respond_json(self, status: int, data: dict) -> None:
+        payload = json.dumps(data).encode('utf-8')
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(payload)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        if self.command != 'HEAD':
+            self.wfile.write(payload)
+        self.close_connection = True
+
     def do_HEAD(self) -> None:
         self.do_GET()
 
     def authorized(self) -> bool:
+        if self.path in ('/kiosk', '/kiosk/', '/api/kiosk-data', '/kiosk/data') or self.path.startswith('/kiosk/'):
+            return True
         header = self.headers.get('Authorization', '')
         if len(header) > 1024 or not hmac.compare_digest(header.encode(), self.server.authorization):
             self.respond(401, 'Authentication required.', True)
@@ -340,13 +522,24 @@ class SettingsHandler(BaseHTTPRequestHandler):
             }
             page = Path(__file__).with_name('ups_maintenance.html').read_text(encoding='utf-8')
             self.respond(200, re.sub(r'\{\{(\w+)\}\}', lambda match: escape(values.get(match[1], ''), quote=True), page))
+        elif self.path in ('/kiosk', '/kiosk/'):
+            values = {
+                'csrf': self.server.csrf,
+                'host': host,
+            }
+            page = Path(__file__).with_name('ups_kiosk.html').read_text(encoding='utf-8')
+            self.respond(200, re.sub(r'\{\{(\w+)\}\}', lambda match: escape(values.get(match[1], ''), quote=True), page))
+        elif self.path in ('/api/kiosk-data', '/kiosk/data'):
+            data = get_kiosk_data()
+            data['csrf'] = self.server.csrf
+            self.respond_json(200, data)
         else:
             self.respond(404, 'Page not found.')
 
     def do_POST(self) -> None:
         if not self.authorized():
             return
-        if self.path not in ('/', '/settings', '/account', '/users', '/password', '/maintenance', '/system'):
+        if self.path not in ('/', '/settings', '/account', '/users', '/password', '/maintenance', '/system', '/kiosk/action', '/kiosk'):
             self.respond(404, 'Page not found.')
             return
         if self.headers.get('Content-Type') != 'application/x-www-form-urlencoded' or self.headers.get('Transfer-Encoding'):
@@ -364,10 +557,23 @@ class SettingsHandler(BaseHTTPRequestHandler):
                 raise ValueError('Duplicate form fields.')
             form = {key: values[0] for key, values in fields.items()}
             if not hmac.compare_digest(form.get('csrf', '').encode(), self.server.csrf.encode()):
-                self.respond(403, 'Invalid form token. Reload settings before saving.')
+                if self.path in ('/kiosk/action', '/kiosk'):
+                    self.respond_json(403, {'error': 'Invalid form token.'})
+                else:
+                    self.respond(403, 'Invalid form token. Reload settings before saving.')
                 return
 
-            if self.path in ('/maintenance', '/system'):
+            if self.path in ('/kiosk/action', '/kiosk'):
+                action = form.get('action', '').strip().lower()
+                if action in ('restart', 'reboot'):
+                    schedule_system_action('restart')
+                    self.respond_json(200, {'success': True, 'action': 'restart'})
+                elif action in ('shutdown', 'poweroff'):
+                    schedule_system_action('shutdown')
+                    self.respond_json(200, {'success': True, 'action': 'shutdown'})
+                else:
+                    raise ValueError('Unknown kiosk action requested.')
+            elif self.path in ('/maintenance', '/system'):
                 action = form.get('action', '').strip().lower()
                 if action in ('restart', 'reboot'):
                     schedule_system_action('restart')
@@ -414,7 +620,10 @@ class SettingsHandler(BaseHTTPRequestHandler):
                 changed = save(form)
                 self.respond(200, '<p>' + ('Settings saved. SNMP restarted.' if changed else 'Settings already match.') + '</p><a href="/">Back to settings</a>')
         except (ValueError, UnicodeError) as error:
-            if self.path in ('/maintenance', '/system'):
+            if self.path in ('/kiosk/action', '/kiosk'):
+                self.respond_json(400, {'error': str(error)})
+                return
+            elif self.path in ('/maintenance', '/system'):
                 back_url = '/maintenance'
             elif self.path in ('/account', '/users', '/password'):
                 back_url = '/account'

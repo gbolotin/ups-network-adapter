@@ -1,0 +1,21 @@
+[Unit]
+Description=Home Console night backlight and consumed wake touch
+After=systemd-udev-settle.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/ups-network-adapter/kiosk_screen.py
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=5
+NoNewPrivileges=true
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+DevicePolicy=closed
+DeviceAllow=char-input r
+ReadWritePaths=/sys/class/backlight/10-0045/brightness
+
+[Install]
+WantedBy=multi-user.target

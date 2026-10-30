@@ -208,6 +208,45 @@ def main():
                     assert any('poweroff' in arg for arg in mock_run.call_args[0][0])
                 rejected(lambda: web.execute_system_action('invalid_action'))
                 rejected(lambda: web.schedule_system_action('invalid_action'))
+
+                # Test /kiosk unauthenticated access
+                k_status, k_page, _ = request(path='/kiosk', authorized=False)
+                assert k_status == 200 and 'UPS Adapter Kiosk' in k_page
+                assert 'PeaNUT Dashboard' in k_page and 'statusBadge' in k_page
+
+                # Test /api/kiosk-data
+                kd_status, kd_body, kd_headers = request(path='/api/kiosk-data', authorized=False)
+                assert kd_status == 200 and 'application/json' in kd_headers.get('Content-Type', '')
+                kdata = json.loads(kd_body)
+                assert 'ups' in kdata and 'system' in kdata and 'network' in kdata
+                k_csrf = kdata['csrf']
+
+                # Test /kiosk/action bad csrf
+                bad_k_csrf = {'csrf': 'bad', 'action': 'restart'}
+                res_code, res_json, _ = request('POST', path='/kiosk/action', body=urlencode(bad_k_csrf), authorized=False)
+                assert res_code == 403 and 'Invalid form token' in res_json
+
+                # Test /kiosk/action bad action
+                bad_k_act = {'csrf': k_csrf, 'action': 'invalid'}
+                res_code, res_json, _ = request('POST', path='/kiosk/action', body=urlencode(bad_k_act), authorized=False)
+                assert res_code == 400 and 'error' in res_json
+
+                # Test /kiosk/action restart
+                with patch.object(web, 'schedule_system_action') as mock_k_action:
+                    good_k_restart = {'csrf': k_csrf, 'action': 'restart'}
+                    res_code, res_json, _ = request('POST', path='/kiosk/action', body=urlencode(good_k_restart), authorized=False)
+                    assert res_code == 200 and json.loads(res_json).get('success') is True
+                    mock_k_action.assert_called_once_with('restart')
+
+                # Test /kiosk/action shutdown
+                with patch.object(web, 'schedule_system_action') as mock_k_action:
+                    good_k_shutdown = {'csrf': k_csrf, 'action': 'shutdown'}
+                    res_code, res_json, _ = request('POST', path='/kiosk/action', body=urlencode(good_k_shutdown), authorized=False)
+                    assert res_code == 200 and json.loads(res_json).get('success') is True
+                    mock_k_action.assert_called_once_with('shutdown')
+
+                assert '1h 1m' in web.format_uptime(3661)
+                assert '1h 1m 1s' in web.format_runtime(3661)
             finally:
                 server.shutdown()
                 server.server_close()

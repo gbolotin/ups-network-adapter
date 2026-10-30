@@ -394,6 +394,19 @@ The website includes a dedicated **Maintenance** page (`/maintenance`):
 - **Shutdown System**: Safely shuts down the operating system and stops internal storage writes before disconnecting power to protect against SD card corruption.
 - Protected by authentication, CSRF tokens, and confirmation prompts to prevent accidental triggers.
 
+### Touchscreen Kiosk Status & Controls
+
+The website provides a dedicated **Kiosk** dashboard (`/kiosk`):
+- Designed for physical touchscreen displays (such as 5" 1024×600 DSI LCDs) and direct browser monitoring without login barriers.
+- **Read-Only Statuses**: Live UPS metrics (load, battery %, runtime, voltages), system health (uptime, CPU temperature, RAM usage, storage), and network details (hostname, IP/prefix, gateway, MAC, interface).
+- **Control Buttons**:
+  - **PeaNUT Dashboard**: Switch directly back to the full PeaNUT dashboard (`:8080`).
+  - **Switch Theme**: Instantly toggle Dark and Light themes with persistent storage.
+  - **Switch Language**: Instantly switch between English and Russian (`EN` / `RU`).
+  - **Restart & Shutdown**: Touch-friendly dialogs with confirmation modals to reboot or safely halt the Pi.
+- **PeaNUT Toolbar Navigation**: A `System Info` navigation button is automatically added into PeaNUT's top toolbar on the kiosk display via the browser extension (`display/readability`), allowing seamless two-way switching between PeaNUT and system status.
+- On the Home Console installation, kiosk boot opens HA's `/home-console/ups?kiosk`; PeaNUT (`http://127.0.0.1:8080/device/ups`) remains its automatic local UPS fallback. See [physical display operation](docs/display-kiosk.md) and the [Home Console implementation record](docs/Home_Console_RaspberryPi_Plan/IMPLEMENTATION_STATUS.md).
+
 ### Configure SNMP
 
 Available on the **SNMP Settings** tab (`/`):

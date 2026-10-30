@@ -1,0 +1,42 @@
+{
+  "utc": "2026-10-30T03:00:19.898Z",
+  "physical_usb_swap_tested": false,
+  "original_entity_ids_preserved": 22,
+  "original_history_readable": true,
+  "offline": {
+    "path": "/home-console/ups",
+    "viewport": {
+      "width": 1024,
+      "height": 600
+    },
+    "readings": [
+      "",
+      "Battery charge   Unavailable",
+      "Load   Unavailable",
+      "Input voltage   Unavailable",
+      "Battery runtime   Unavailable",
+      "Battery voltage   Unavailable"
+    ],
+    "summary": "Connected UPS\nUPS not connected or data unavailable\n",
+    "identity": "unavailable"
+  },
+  "online": {
+    "path": "/home-console/ups",
+    "viewport": {
+      "width": 1024,
+      "height": 600
+    },
+    "readings": [
+      "",
+      "Battery charge   100.0%",
+      "Load   3.0%  3% · 37 W",
+      "Input voltage   232 V  232.0 V",
+      "Battery runtime   11,858.00 s  3 hours, 17 minutes",
+      "Battery voltage   Unavailable"
+    ],
+    "summary": "Connected UPS\nEATON · Eaton 5E 2200 G2Status: OL\nh2{margin:0 0 8px}p{margin:0;line-height:1.35}",
+    "identity": "Eaton 5E 2200 G2"
+  },
+  "entity_and_device_ids_stable_after_reload": true,
+  "passed": true
+}

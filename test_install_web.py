@@ -62,7 +62,7 @@ def main():
             installer.install()
             secret = credentials.read_bytes()
             assert len(json.loads(secret)['password']) >= 32
-            assert (library / 'ups_web.html').is_file() and (library / 'ups_account.html').is_file() and (library / 'ups_maintenance.html').is_file() and unit.is_file()
+            assert (library / 'ups_web.html').is_file() and (library / 'ups_account.html').is_file() and (library / 'ups_maintenance.html').is_file() and (library / 'ups_kiosk.html').is_file() and unit.is_file()
             assert config.read_bytes() == original
             assert any(command[1:3] == ['restart', 'ups-web.service'] for command in commands)
             commands.clear()

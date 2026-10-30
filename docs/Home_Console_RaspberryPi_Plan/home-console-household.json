@@ -1,0 +1,526 @@
+{
+  "title": "Home",
+  "swipe_nav": {
+    "enable": false
+  },
+  "views": [
+    {
+      "title": "Home",
+      "icon": "mdi:home",
+      "type": "sections",
+      "max_columns": 3,
+      "sections": [
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Living room · Receiver"
+            },
+            {
+              "type": "media-control",
+              "entity": "media_player.denon_avc_x4700h"
+            },
+            {
+              "type": "tile",
+              "entity": "media_player.denon_avc_x4700h",
+              "name": "Receiver controls",
+              "grid_options": {
+                "columns": 12
+              },
+              "features": [
+                {
+                  "type": "media-player-volume-slider"
+                },
+                {
+                  "type": "media-player-source"
+                },
+                {
+                  "type": "media-player-sound-mode"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "columns": 3,
+              "square": false,
+              "cards": [
+                {
+                  "type": "button",
+                  "name": "Off",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "media_player.turn_off",
+                    "data": {},
+                    "target": {
+                      "entity_id": "media_player.denon_avc_x4700h"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "TV",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_denon_source",
+                    "data": {
+                      "source": "TV Audio"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "HEOS",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_denon_source",
+                    "data": {
+                      "source": "HEOS Music"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Living room · TV"
+            },
+            {
+              "type": "tile",
+              "entity": "media_player.lg_webos_tv_oled83c36la",
+              "name": "LG TV",
+              "grid_options": {
+                "columns": 12
+              },
+              "features": [
+                {
+                  "type": "media-player-volume-slider"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "columns": 3,
+              "square": false,
+              "cards": [
+                {
+                  "type": "button",
+                  "name": "Off",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "media_player.turn_off",
+                    "data": {},
+                    "target": {
+                      "entity_id": "media_player.lg_webos_tv_oled83c36la"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "PC · HDMI 1",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_tv_source",
+                    "data": {
+                      "source": "HDMI 1"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "SHIELD · HDMI 4",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_tv_source",
+                    "data": {
+                      "source": "SHIELD Game Console"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Denon · HDMI 2",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_tv_source",
+                    "data": {
+                      "source": "Denon Sound Bar"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "YouTube",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_tv_source",
+                    "data": {
+                      "source": "YouTube"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Plex",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_tv_source",
+                    "data": {
+                      "source": "Plex"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Netflix",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_tv_source",
+                    "data": {
+                      "source": "Netflix"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                },
+                {
+                  "type": "button",
+                  "name": "Apple TV",
+                  "show_state": false,
+                  "tap_action": {
+                    "action": "perform-action",
+                    "perform_action": "script.home_console_tv_source",
+                    "data": {
+                      "source": "Apple TV"
+                    }
+                  },
+                  "hold_action": {
+                    "action": "none"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Entry"
+            },
+            {
+              "type": "tile",
+              "entity": "lock.lock_ultra_17",
+              "name": "Front door",
+              "features": [
+                {
+                  "type": "lock-commands"
+                }
+              ]
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.lock_ultra_17_battery",
+              "name": "Lock battery"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Office · Aquarium"
+            },
+            {
+              "type": "grid",
+              "columns": 2,
+              "square": false,
+              "cards": [
+                {
+                  "type": "tile",
+                  "entity": "switch.power_plug_cd43",
+                  "name": "Aquarium outlet",
+                  "tap_action": {
+                    "action": "toggle"
+                  }
+                },
+                {
+                  "type": "tile",
+                  "entity": "sensor.power_plug_cd43_power",
+                  "name": "Measured power"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Living room · Camera"
+            },
+            {
+              "type": "grid",
+              "columns": 3,
+              "square": false,
+              "cards": [
+                {
+                  "type": "tile",
+                  "entity": "switch.chuangmi_sg_1069362690_039c04_on_p_2_1",
+                  "name": "Camera power",
+                  "tap_action": {
+                    "action": "toggle"
+                  }
+                },
+                {
+                  "type": "tile",
+                  "entity": "switch.chuangmi_sg_1069362690_039c04_motion_detection_p_5_1",
+                  "name": "Motion detection",
+                  "tap_action": {
+                    "action": "toggle"
+                  }
+                },
+                {
+                  "type": "tile",
+                  "entity": "switch.chuangmi_sg_1069362690_039c04_human_tracking_p_2_9",
+                  "name": "Human tracking",
+                  "tap_action": {
+                    "action": "toggle"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "button",
+              "name": "Open camera",
+              "icon": "mdi:arrow-right",
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "/dashboard-cameras/0"
+              }
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "More"
+            },
+            {
+              "type": "button",
+              "name": "Music rooms",
+              "icon": "mdi:arrow-right",
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "/dashboard-new/music"
+              }
+            },
+            {
+              "type": "button",
+              "name": "UPS",
+              "icon": "mdi:arrow-right",
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "/dashboard-new/ups"
+              }
+            },
+            {
+              "type": "button",
+              "name": "Map",
+              "icon": "mdi:arrow-right",
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "/map"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Music",
+      "path": "music",
+      "icon": "mdi:music",
+      "type": "sections",
+      "max_columns": 3,
+      "sections": [
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Denon AVC-X4700H"
+            },
+            {
+              "type": "media-control",
+              "entity": "media_player.denon_avc_x4700h_3"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Bedroom · WiiM Ultra"
+            },
+            {
+              "type": "media-control",
+              "entity": "media_player.bedroom_3"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Living room · LG TV"
+            },
+            {
+              "type": "media-control",
+              "entity": "media_player.lg_tv_oled83c_2"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "SHIELD"
+            },
+            {
+              "type": "media-control",
+              "entity": "media_player.shield_3"
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "Music services"
+            },
+            {
+              "type": "tile",
+              "entity": "media_player.spotifyplus_gabi",
+              "name": "Spotify",
+              "features": [
+                {
+                  "type": "media-player-source"
+                }
+              ]
+            },
+            {
+              "type": "button",
+              "name": "Open Music Assistant",
+              "icon": "mdi:arrow-right",
+              "tap_action": {
+                "action": "navigate",
+                "navigation_path": "/d5369777_music_assistant"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "UPS",
+      "path": "ups",
+      "icon": "mdi:power-plug-battery",
+      "type": "sections",
+      "max_columns": 2,
+      "sections": [
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "UPS"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.ups_apc_status",
+              "name": "Status"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.ups_apc_battery_charge",
+              "name": "Battery charge"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.ups_apc_load",
+              "name": "Load"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.ups_apc_input_voltage",
+              "name": "Input voltage"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.ups_battery_runtime",
+              "name": "Battery runtime"
+            },
+            {
+              "type": "tile",
+              "entity": "sensor.ups_battery_voltage",
+              "name": "Battery voltage"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

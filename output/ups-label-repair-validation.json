@@ -1,0 +1,52 @@
+{
+  "utc": "2026-10-30T03:38:48.895Z",
+  "passed": true,
+  "preserved_entity_ids": 56,
+  "missing_names": 0,
+  "checked_after_reload": true,
+  "original_apc_history_readable": true,
+  "readings": [
+    {
+      "entity": "sensor.ups_battery_runtime_2",
+      "name": "Battery runtime",
+      "value": "11858.0",
+      "unit": "s"
+    },
+    {
+      "entity": "sensor.ups_real_power",
+      "name": "Real power",
+      "value": "36.0",
+      "unit": "W"
+    },
+    {
+      "entity": "sensor.ups_nominal_real_power_2",
+      "name": "Nominal real power",
+      "value": "1200.0",
+      "unit": "W"
+    },
+    {
+      "entity": "sensor.ups_output_voltage",
+      "name": "Output voltage",
+      "value": "235.0",
+      "unit": "V"
+    },
+    {
+      "entity": "sensor.ups_output_frequency",
+      "name": "Output frequency",
+      "value": "50.0",
+      "unit": "Hz"
+    },
+    {
+      "entity": "sensor.ups_apparent_power",
+      "name": "Apparent power",
+      "value": "135.0",
+      "unit": "VA"
+    },
+    {
+      "entity": "sensor.ups_nominal_power",
+      "name": "Nominal apparent power",
+      "value": "2200.0",
+      "unit": "VA"
+    }
+  ]
+}

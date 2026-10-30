@@ -1,0 +1,14 @@
+[Unit]
+Description=One-use Home Console cold-boot HA failure fixture
+After=local-fs.target
+Before=ups-kiosk.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 /var/backups/home-console/20261027T210523Z/operator-stage/check_pi_boot_block.py
+ExecStopPost=/usr/bin/python3 /var/backups/home-console/20261027T210523Z/operator-stage/check_pi_boot_block.py --remove
+TimeoutStartSec=20
+
+[Install]
+WantedBy=multi-user.target
